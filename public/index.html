@@ -132,18 +132,9 @@
       const doc = new jsPDF();
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const blob = doc.output("blob");
+      const pdfBlob = doc.output("blob");
 
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "PromptAgentHQ_Listing.pdf";
-      a.style.display = "none";
-      a.rel = "noopener";
-      a.target = "_self";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
+      triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
     }
 
     function triggerDownload(blob, filename) {

@@ -8,11 +8,8 @@ const path = require('path');
 
 const app = express();
 app.use(bodyParser.json());
-
-// ✅ Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ OpenAI setup
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post('/generate', async (req, res) => {
@@ -39,13 +36,12 @@ app.post('/generate', async (req, res) => {
   }
 });
 
-// ✅ DOCX export handler
 app.post('/export-word', (req, res) => {
   const content = req.body.content;
   if (!content) return res.status(400).send("No content provided");
 
   const inputPath = '/tmp/input.txt';
-  const outputPath = '/tmp/PromptAgentHQ_Listing.docx';
+  const outputPath = '/tmp/agency-listing.docx';
 
   fs.writeFileSync(inputPath, content);
 
@@ -53,12 +49,17 @@ app.post('/export-word', (req, res) => {
     if (err) {
       console.error("❌ Python exec error:", err.message);
       console.error(stderr);
-      return res.status(500).send("DOCX generation failed.");
+      return res.status(500).send("Python generation failed.");
     }
 
     if (!fs.existsSync(outputPath)) {
-      console.error("❌ DOCX file not found:", outputPath);
-      return res.status(500).send("DOCX file not created.");
+      console.error("❌ File not created:", outputPath);
+      return res.status(500).send("DOCX file not found.");
+    }
+
+    const stat = fs.statSync(outputPath);
+    if (stat.size < 1000) {
+      console.warn("⚠️ File created but may be invalid (too small)");
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -67,11 +68,9 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-// ✅ Serve the frontend index
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ✅ Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

@@ -7,12 +7,17 @@ const path = require('path');
 const OpenAI = require('openai');
 
 const app = express();
+
+// ✅ Serve frontend files from the "public" folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ✅ Middleware
 app.use(bodyParser.json());
-app.use(express.static('.'));
 
 // ✅ OpenAI init
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ✅ Main Generation Route
 app.post('/generate', async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("📩 Prompt received:", userPrompt);
@@ -37,6 +42,7 @@ app.post('/generate', async (req, res) => {
   }
 });
 
+// ✅ DOCX Export Route
 app.post('/export-word', (req, res) => {
   const content = req.body.content;
   const inputPath = '/tmp/input.txt';
@@ -61,7 +67,13 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-const PORT = 3000;
+// ✅ Fallback for GET /
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ✅ Start Server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

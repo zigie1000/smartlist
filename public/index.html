@@ -120,17 +120,7 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
-      const blob = doc.output("blob");
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "agency-listing.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      doc.save("agency-listing.pdf"); // ✅ FIXED: download instead of inline view
     }
 
     function exportToWord() {

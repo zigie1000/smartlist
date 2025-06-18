@@ -120,7 +120,9 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      doc.save("agency-listing.pdf");  // ✅ No preview — force download
+      const pdfBlob = doc.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, '_blank');  // ✅ Open in new tab without navigating away
     }
 
     function exportToWord() {

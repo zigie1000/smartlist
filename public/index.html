@@ -111,19 +111,19 @@
     function exportToWord() {
       const text = document.getElementById("result").textContent;
 
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office'
-              xmlns:w='urn:schemas-microsoft-com:office:word'
-              xmlns='http://www.w3.org/TR/REC-html40'>
-          <head><meta charset='utf-8'><title>PromptAgentHQ</title></head>
-          <body><p>${text.replace(/\n/g, "<br>")}</p></body>
-        </html>`;
-
-      const blob = new Blob(['\ufeff', htmlContent], {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      });
-
-      triggerDownload(blob, "PromptAgentHQ_Listing.docx");
+      fetch("/export-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to export DOCX.");
+        return res.blob();
+      })
+      .then(blob => {
+        triggerDownload(blob, "PromptAgentHQ_Listing.docx");
+      })
+      .catch(err => alert("❌ " + err.message));
     }
 
     function exportToPDF() {
@@ -139,10 +139,11 @@
     function triggerDownload(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.style.display = "none";
       a.href = url;
       a.download = filename;
-      a.target = "_self"; // Prevent opening in a new tab (especially for PDF in Safari)
+      a.style.display = 'none';
+      a.rel = "noopener";
+      a.target = "_self"; // ensures download — prevents open in tab
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

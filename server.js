@@ -8,14 +8,18 @@ const path = require('path');
 
 const app = express();
 app.use(bodyParser.json());
+
+// ✅ Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ OpenAI generation route
+// ✅ OpenAI setup
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 app.post('/generate', async (req, res) => {
   const userPrompt = req.body.prompt;
+  console.log("📩 Prompt received:", userPrompt);
 
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -26,31 +30,35 @@ app.post('/generate', async (req, res) => {
     });
 
     const output = response.choices[0].message.content.trim();
+    console.log("✅ OpenAI response:", output);
     res.json({ result: output });
 
-  } catch (error) {
-    console.error("❌ OpenAI Error:", error.response?.data || error.message || error);
+  } catch (e) {
+    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
 
-// ✅ Backend Word Export route (uses Python script)
+// ✅ DOCX export handler
 app.post('/export-word', (req, res) => {
   const content = req.body.content;
-  const agent   = req.body.agent || "";
-
   if (!content) return res.status(400).send("No content provided");
 
   const inputPath = '/tmp/input.txt';
   const outputPath = '/tmp/PromptAgentHQ_Listing.docx';
-  const fullText = agent ? `Agent: ${agent}\n\n${content}` : content;
 
-  fs.writeFileSync(inputPath, fullText);
+  fs.writeFileSync(inputPath, content);
 
   exec(`python3 generate_docx.py ${inputPath}`, (err, stdout, stderr) => {
-    if (err || !fs.existsSync(outputPath)) {
-      console.error("❌ DOCX generation failed:", err || "File not found", stderr);
-      return res.status(500).send("DOCX file generation failed.");
+    if (err) {
+      console.error("❌ Python exec error:", err.message);
+      console.error(stderr);
+      return res.status(500).send("DOCX generation failed.");
+    }
+
+    if (!fs.existsSync(outputPath)) {
+      console.error("❌ DOCX file not found:", outputPath);
+      return res.status(500).send("DOCX file not created.");
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -59,13 +67,11 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-// ✅ Serve frontend
+// ✅ Serve the frontend index
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ✅ Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

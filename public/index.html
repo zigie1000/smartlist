@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PromptAgentHQ – AI Property Listings</title>
+  <title>PromptAgentHQ – Real Estate Listing Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -20,16 +20,14 @@
       border-radius: 12px;
       box-shadow: 0 0 12px rgba(0,0,0,0.08);
     }
-    textarea, input {
+    textarea {
       width: 100%;
+      height: 120px;
       padding: 10px;
       font-size: 16px;
       margin-top: 10px;
       border-radius: 6px;
       border: 1px solid #ccc;
-    }
-    textarea {
-      height: 120px;
     }
     button {
       background: #4CAF50;
@@ -58,19 +56,14 @@
       display: none;
       margin-top: 20px;
     }
-    .char-counter {
-      font-size: 13px;
-      color: #777;
-      text-align: right;
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>🏡 PromptAgentHQ – Generate Real Estate Listings Instantly</h2>
-    <input type="text" id="agentName" placeholder="Agent or Agency Name (optional)" />
-    <textarea id="prompt" maxlength="300" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
-    <div class="char-counter" id="charCounter">300 characters remaining</div>
+    <h2>🏡 PromptAgentHQ: Real Estate Listing Generator</h2>
+    <p>Enter Property Details:</p>
+    <textarea id="prompt" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
+    <br />
     <button onclick="generate()">Generate</button>
 
     <div id="output-container">
@@ -87,26 +80,14 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const maxChars = 300;
-    const counter = document.getElementById('charCounter');
-    const promptInput = document.getElementById('prompt');
-
-    promptInput.addEventListener("input", () => {
-      const remaining = maxChars - promptInput.value.length;
-      counter.textContent = remaining + " characters remaining";
-    });
-
     async function generate() {
-      const prompt = promptInput.value.trim();
-      const agent = document.getElementById("agentName").value.trim();
+      const prompt = document.getElementById("prompt").value.trim();
       if (!prompt) return alert("Please enter property details.");
-
-      const fullPrompt = agent ? (agent + ":\n" + prompt) : prompt;
 
       const res = await fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt })
+        body: JSON.stringify({ prompt })
       });
 
       const data = await res.json();
@@ -139,37 +120,33 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
+
       const blob = doc.output("blob");
-      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noopener";
+      a.href = URL.createObjectURL(blob);
       a.download = "PromptAgentHQ_Listing.pdf";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
     }
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text })
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to export DOCX.");
-        return res.blob();
-      })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.target = "_blank";
-        a.rel = "noopener";
-        a.download = "PromptAgentHQ_Listing.docx";
-        a.click();
-      })
-      .catch(err => alert("❌ " + err.message));
+      const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office'
+        xmlns:w='urn:schemas-microsoft-com:office:word'
+        xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'></head><body><pre>${text}</pre></body></html>`;
+
+      const blob = new Blob([header], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      });
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "PromptAgentHQ_Listing.docx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   </script>
 </body>

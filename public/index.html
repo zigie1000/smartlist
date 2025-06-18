@@ -109,7 +109,10 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = "agency-listing.txt";
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
@@ -119,12 +122,16 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const pdf = doc.output("blob");
-      const url = URL.createObjectURL(pdf);
+
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "agency-listing.pdf";
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
@@ -140,11 +147,15 @@
         return res.blob();
       })
       .then(blob => {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
+        a.href = url;
         a.download = "agency-listing.docx";
+        a.style.display = 'none';
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(a.href);
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       })
       .catch(err => alert("❌ " + err.message));
     }

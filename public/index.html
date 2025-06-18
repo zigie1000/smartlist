@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PromptAgentHQ – Real Estate Listing Generator</title>
+  <title>PromptAgentHQ - Real Estate Listing Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -60,7 +60,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>🏡 PromptAgentHQ: Real Estate Listing Generator</h2>
+    <h2>🏡 PromptAgentHQ — Real Estate Listing Generator</h2>
     <p>Enter Property Details:</p>
     <textarea id="prompt" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
     <br />
@@ -122,10 +122,9 @@
       doc.text(lines, 15, 20);
 
       const blob = doc.output("blob");
-      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "PromptAgentHQ_Listing.pdf";  // ✅ Force download, no preview
+      a.href = URL.createObjectURL(blob);
+      a.download = "PromptAgentHQ_Listing.pdf";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -145,7 +144,7 @@
       .then(blob => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "PromptAgentHQ_Listing.docx";
+        a.setAttribute("download", "PromptAgentHQ_Listing.docx");
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

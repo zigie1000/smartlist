@@ -110,7 +110,6 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,20 +131,9 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
-      const pdfBlob = doc.output("blob");
-
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "PromptAgentHQ_Listing.pdf";
-      a.style.display = 'none';
-      a.rel = "noopener";
-      a.target = "_self"; // Enforce download
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const pdfBlob = doc.output("blobblob");
+      const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+      triggerDownload(blob, "PromptAgentHQ_Listing.pdf");
     }
 
     function triggerDownload(blob, filename) {
@@ -155,7 +143,7 @@
       a.download = filename;
       a.style.display = 'none';
       a.rel = "noopener";
-      a.target = "_self";
+      a.target = "_self"; // ⬅ ensures it won't open in new tab
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

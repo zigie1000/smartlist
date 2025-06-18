@@ -110,23 +110,17 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html xmlns:o='urn:schemas-microsoft-com:office:office'
-              xmlns:w='urn:schemas-microsoft-com:office:word'
-              xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><meta charset='utf-8'><title>PromptAgentHQ</title></head>
-        <body>
-          <div style='font-family:Segoe UI, sans-serif; font-size:14px;'>${text.replace(/\n/g, "<br>")}</div>
-        </body>
-        </html>`;
-
-      const blob = new Blob(['\ufeff', htmlContent], {
-        type: 'application/vnd.ms-word'
-      });
-
-      triggerDownload(blob, "PromptAgentHQ_Listing.doc");
+      fetch("/export-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to export DOCX.");
+        return res.blob();
+      })
+      .then(blob => triggerDownload(blob, "PromptAgentHQ_Listing.docx"))
+      .catch(err => alert("❌ " + err.message));
     }
 
     function exportToPDF() {
@@ -145,6 +139,7 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

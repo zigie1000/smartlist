@@ -112,15 +112,18 @@
       const text = document.getElementById("result").textContent;
 
       const htmlContent = `
+        <!DOCTYPE html>
         <html xmlns:o='urn:schemas-microsoft-com:office:office'
               xmlns:w='urn:schemas-microsoft-com:office:word'
               xmlns='http://www.w3.org/TR/REC-html40'>
-          <head><meta charset='utf-8'><title>PromptAgentHQ</title></head>
-          <body><p>${text.replace(/\n/g, "<br>")}</p></body>
+        <head><meta charset='utf-8'><title>PromptAgentHQ</title></head>
+        <body>
+          <div style='font-family:Segoe UI, sans-serif; font-size:14px;'>${text.replace(/\n/g, "<br>")}</div>
+        </body>
         </html>`;
 
       const blob = new Blob(['\ufeff', htmlContent], {
-        type: 'application/msword'
+        type: 'application/vnd.ms-word'
       });
 
       triggerDownload(blob, "PromptAgentHQ_Listing.doc");
@@ -132,7 +135,8 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const blob = doc.output("blob");
+
+      const blob = doc.output("blob", { type: "application/pdf" });
       triggerDownload(blob, "PromptAgentHQ_Listing.pdf");
     }
 

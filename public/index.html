@@ -127,20 +127,19 @@
     }
 
     function exportToPDF() {
+      const text = document.getElementById("result").textContent;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
-      const pdfBlob = doc.output("blob");
+      const blob = doc.output("blob");
 
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(pdfBlob);
+      a.href = URL.createObjectURL(blob);
       a.download = "PromptAgentHQ_Listing.pdf";
-      a.style.display = 'none';
+      a.style.display = "none";
       a.rel = "noopener";
-      a.target = "_self"; // Force download
+      a.target = "_self";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

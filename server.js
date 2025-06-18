@@ -46,7 +46,7 @@ app.post('/export-word', (req, res) => {
 
   fs.writeFileSync(inputPath, content);
 
-  // ✅ FIXED: Pass inputPath directly instead of redirecting stdin
+  // ✅ FIXED: pass file path to Python script (not stdin)
   exec(`python3 generate_docx.py ${inputPath}`, (err, stdout, stderr) => {
     if (err) {
       console.error("❌ Python exec error:", err.message);

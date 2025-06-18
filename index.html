@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>Real Estate Listing Generator</title>
+<style>body{font-family:sans-serif;padding:20px;}textarea{width:100%;height:100px;}</style></head>
+<body>
+<h2>Listing Generator</h2>
+<textarea id="prompt" placeholder="Describe the property..."></textarea>
+<br><button onclick="generate()">Generate</button>
+<div id="output-container" style="display:none;">
+  <h3>Generated Listing:</h3>
+  <div id="result"></div>
+  <div id="export-buttons">
+    <button onclick="copyToClipboard()">Copy</button>
+    <button onclick="exportToWord()">Export Word</button>
+  </div>
+</div>
+<script>
+async function generate() {
+  const prompt = document.getElementById("prompt").value.trim();
+  const res = await fetch("/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
+  const data = await res.json();
+  document.getElementById("result").textContent = data.result;
+  document.getElementById("output-container").style.display = 'block';
+}
+function exportToWord() {
+  const text = document.getElementById("result").textContent;
+  fetch("/export-word", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: text })
+  })
+  .then(res => res.blob())
+  .then(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "agency-listing.docx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+}
+</script>
+</body></html>

@@ -122,9 +122,10 @@
       doc.text(lines, 15, 20);
 
       const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "PromptAgentHQ_Listing.pdf";
+      a.href = url;
+      a.download = "PromptAgentHQ_Listing.pdf";  // ✅ Force download, no preview
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -132,21 +133,24 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-      const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office'
-        xmlns:w='urn:schemas-microsoft-com:office:word'
-        xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><meta charset='utf-8'></head><body><pre>${text}</pre></body></html>`;
-
-      const blob = new Blob([header], {
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      });
-
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "PromptAgentHQ_Listing.docx";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      fetch("/export-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to export DOCX.");
+        return res.blob();
+      })
+      .then(blob => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "PromptAgentHQ_Listing.docx";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      })
+      .catch(err => alert("❌ " + err.message));
     }
   </script>
 </body>

@@ -109,9 +109,8 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = "agency-listing.txt";
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     function exportToPDF() {
@@ -120,7 +119,13 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      doc.save("agency-listing.pdf");
+      const pdf = doc.output("blob");
+      const url = URL.createObjectURL(pdf);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "agency-listing.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     function exportToWord() {
@@ -138,9 +143,8 @@
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = "agency-listing.docx";
-        document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
       })
       .catch(err => alert("❌ " + err.message));
     }

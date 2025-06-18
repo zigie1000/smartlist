@@ -120,9 +120,13 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const pdfBlob = doc.output("blob");
-      const url = URL.createObjectURL(pdfBlob);
-      window.open(url, '_blank');  // ✅ Open in new tab without navigating away
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank"; // ✅ Open PDF in new tab
+      a.rel = "noopener";
+      a.click();
     }
 
     function exportToWord() {
@@ -137,12 +141,12 @@
         return res.blob();
       })
       .then(blob => {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "agency-listing.docx";
-        document.body.appendChild(a);
+        a.href = url;
+        a.target = "_blank";  // ✅ Open DOCX in new tab
+        a.rel = "noopener";
         a.click();
-        document.body.removeChild(a);
       })
       .catch(err => alert("❌ " + err.message));
     }

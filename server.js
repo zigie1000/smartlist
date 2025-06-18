@@ -8,72 +8,70 @@ const path = require('path');
 
 const app = express();
 app.use(bodyParser.json());
-
-// ✅ Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ OpenAI setup
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+// OpenAI endpoint
 app.post('/generate', async (req, res) => {
   const userPrompt = req.body.prompt;
-  console.log("📩 Prompt received:", userPrompt);
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a real estate listing generator." },
-        { role: "user", content: `Write a professional real estate listing: ${userPrompt}` }
-      ],
-      max_tokens: 300
-    });
-
-    const output = response.choices[0].message.content.trim();
-    console.log("✅ OpenAI response:", output);
-    res.json({ result: output });
-
+    const response = await new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+      .chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are a real estate listing generator." },
+          { role: "user", content: `Write a professional real estate listing: ${userPrompt}` }
+        ],
+        max_tokens: 300
+      });
+    res.json({ result: response.choices[0].message.content.trim() });
   } catch (e) {
-    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
+    console.error(e);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
 
+// Backend DOCX export
 app.post('/export-word', (req, res) => {
   const content = req.body.content;
-  const agent = req.body.agent || "";
+  const agent   = req.body.agent || "";
 
   if (!content) return res.status(400).send("No content provided");
 
-  const inputPath = '/tmp/input.txt';
+  const inputPath  = '/tmp/input.txt';
   const outputPath = '/tmp/PromptAgentHQ_Listing.docx';
+  const fullText   = agent
+    ? `Agent: ${agent}\n\n${content}`
+    : content;
 
-  const fullContent = agent ? `Agent: ${agent}\n\n${content}` : content;
-  fs.writeFileSync(inputPath, fullContent);
+  // Write the combined text
+  fs.writeFileSync(inputPath, fullText);
 
+  // Invoke Python to build the .docx
   exec(`python3 generate_docx.py ${inputPath}`, (err, stdout, stderr) => {
-    if (err) {
-      console.error("❌ Python exec error:", err.message);
-      console.error(stderr);
-      return res.status(500).send("DOCX generation failed.");
+    if (err || !fs.existsSync(outputPath)) {
+      console.error("DOCX generation failed:", err || "file missing", stderr);
+      return res.status(500).send("Failed to create DOCX.");
     }
 
-    if (!fs.existsSync(outputPath)) {
-      console.error("❌ File not created:", outputPath);
-      return res.status(500).send("DOCX file not found.");
-    }
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'inline; filename="PromptAgentHQ_Listing.docx"');
+    // Force a download, just like your text export
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="PromptAgentHQ_Listing.docx"'
+    );
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
     res.sendFile(path.resolve(outputPath));
   });
 });
 
-// ✅ Serve index.html from /public
+// Serve your SPA
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ✅ Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running at http://localhost:${PORT}`)
+);

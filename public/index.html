@@ -129,9 +129,7 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
-      const blob = doc.output("blob", { type: "application/pdf" });
-      triggerDownload(blob, "PromptAgentHQ_Listing.pdf");
+      doc.save("PromptAgentHQ_Listing.pdf"); // ✅ Always triggers download
     }
 
     function triggerDownload(blob, filename) {
@@ -139,7 +137,6 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
-      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

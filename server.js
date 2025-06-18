@@ -3,21 +3,16 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const { exec } = require('child_process');
-const path = require('path');
 const OpenAI = require('openai');
+const path = require('path');
 
 const app = express();
-
-// ✅ Serve frontend files from the "public" folder
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ✅ Middleware
 app.use(bodyParser.json());
+app.use(express.static('.'));
 
-// ✅ OpenAI init
+// ✅ OpenAI instance
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Main Generation Route
 app.post('/generate', async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("📩 Prompt received:", userPrompt);
@@ -36,29 +31,37 @@ app.post('/generate', async (req, res) => {
     console.log("✅ OpenAI response:", output);
     res.json({ result: output });
 
-  } catch (err) {
-    console.error("❌ OpenAI error:", err.response?.data || err.message);
+  } catch (e) {
+    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
 
-// ✅ DOCX Export Route
 app.post('/export-word', (req, res) => {
   const content = req.body.content;
+  if (!content) return res.status(400).send("No content provided");
+
   const inputPath = '/tmp/input.txt';
   const outputPath = '/tmp/agency-listing.docx';
 
-  try {
-    fs.writeFileSync(inputPath, content);
-  } catch (e) {
-    console.error("❌ Failed to write input file:", e);
-    return res.status(500).send("Could not write input file.");
-  }
+  fs.writeFileSync(inputPath, content);
 
+  // ✅ FIXED: Pass inputPath directly instead of redirecting stdin
   exec(`python3 generate_docx.py ${inputPath}`, (err, stdout, stderr) => {
-    if (err || !fs.existsSync(outputPath)) {
-      console.error("❌ Python execution error:", stderr || err);
-      return res.status(500).send("DOCX generation failed.");
+    if (err) {
+      console.error("❌ Python exec error:", err.message);
+      console.error(stderr);
+      return res.status(500).send("Python generation failed.");
+    }
+
+    if (!fs.existsSync(outputPath)) {
+      console.error("❌ File not created:", outputPath);
+      return res.status(500).send("DOCX file not found.");
+    }
+
+    const stat = fs.statSync(outputPath);
+    if (stat.size < 1000) {
+      console.warn("⚠️ File created but size is too small — may be invalid.");
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -67,13 +70,5 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-// ✅ Fallback for GET /
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ✅ Start Server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+const PORT = 3000;
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

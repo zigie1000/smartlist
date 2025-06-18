@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PromptAgentHQ - Real Estate Listing Generator</title>
+  <title>PromptAgentHQ Listing Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -60,7 +60,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>🏡 PromptAgentHQ — Real Estate Listing Generator</h2>
+    <h2>🏡 PromptAgentHQ Listing Generator</h2>
     <p>Enter Property Details:</p>
     <textarea id="prompt" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
     <br />
@@ -120,10 +120,10 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
       const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = "PromptAgentHQ_Listing.pdf";
       document.body.appendChild(a);
       a.click();
@@ -132,24 +132,15 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text })
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to export DOCX.");
-        return res.blob();
-      })
-      .then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.setAttribute("download", "PromptAgentHQ_Listing.docx");
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      })
-      .catch(err => alert("❌ " + err.message));
+      const html = `<html><head><meta charset='utf-8'></head><body><p>${text.replace(/\n/g, "<br>")}</p></body></html>`;
+      const blob = new Blob(["\ufeff", html], { type: "application/msword" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "PromptAgentHQ_Listing.doc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   </script>
 </body>

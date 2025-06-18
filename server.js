@@ -70,5 +70,11 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-const PORT = 3000;
+// ✅ Serve index.html for root route "/"
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// ✅ Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

@@ -110,6 +110,7 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
+
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,8 +132,8 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const pdfBlob = doc.output("blobblob");
-      const blob = new Blob([pdfBlob], { type: 'application/pdf' });
+
+      const blob = doc.output("blob");
       triggerDownload(blob, "PromptAgentHQ_Listing.pdf");
     }
 
@@ -143,7 +144,7 @@
       a.download = filename;
       a.style.display = 'none';
       a.rel = "noopener";
-      a.target = "_self"; // ⬅ ensures it won't open in new tab
+      a.target = "_self"; // this prevents it from opening in a new tab
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

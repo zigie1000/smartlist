@@ -120,7 +120,7 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      doc.save("agency-listing.pdf"); // ✅ Fixed: force download
+      doc.save("agency-listing.pdf");  // ✅ No preview — force download
     }
 
     function exportToWord() {

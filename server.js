@@ -9,10 +9,10 @@ const path = require('path');
 const app = express();
 app.use(bodyParser.json());
 
-// ✅ Serve static files from the 'public' directory
+// ✅ Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ OpenAI instance setup
+// ✅ OpenAI setup
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post('/generate', async (req, res) => {
@@ -48,7 +48,6 @@ app.post('/export-word', (req, res) => {
 
   fs.writeFileSync(inputPath, content);
 
-  // ✅ Call Python script with file path argument
   exec(`python3 generate_docx.py ${inputPath}`, (err, stdout, stderr) => {
     if (err) {
       console.error("❌ Python exec error:", err.message);
@@ -63,7 +62,7 @@ app.post('/export-word', (req, res) => {
 
     const stat = fs.statSync(outputPath);
     if (stat.size < 1000) {
-      console.warn("⚠️ File created but size is too small — may be invalid.");
+      console.warn("⚠️ File created but may be invalid (too small)");
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -72,11 +71,11 @@ app.post('/export-word', (req, res) => {
   });
 });
 
-// ✅ Serve the React-style SPA or HTML frontend from /public
+// ✅ Serve index.html from /public
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ✅ Start the server
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

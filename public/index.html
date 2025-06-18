@@ -109,11 +109,9 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = "agency-listing.txt";
-      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     }
 
     function exportToPDF() {
@@ -125,10 +123,10 @@
 
       const blob = doc.output("blob");
       const url = URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
       a.download = "agency-listing.pdf";
-      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -147,15 +145,12 @@
         return res.blob();
       })
       .then(blob => {
-        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = "agency-listing.docx";
-        a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       })
       .catch(err => alert("❌ " + err.message));
     }

@@ -133,8 +133,18 @@
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
 
-      const blob = doc.output("blob");
-      triggerDownload(blob, "PromptAgentHQ_Listing.pdf");
+      const pdfBlob = doc.output("blob");
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pdfBlob);
+      a.download = "PromptAgentHQ_Listing.pdf";
+      a.style.display = 'none';
+      a.rel = "noopener";
+      a.target = "_self"; // Force download
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
     }
 
     function triggerDownload(blob, filename) {
@@ -144,7 +154,7 @@
       a.download = filename;
       a.style.display = 'none';
       a.rel = "noopener";
-      a.target = "_self"; // this prevents it from opening in a new tab
+      a.target = "_self";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

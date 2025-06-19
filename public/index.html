@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>🏡 PromptAgentHQ | Real Estate Listing Generator</title>
+  <title>PromptAgentHQ | Real Estate Listing Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -73,11 +73,6 @@
       margin-right: 10px;
       border-radius: 6px;
     }
-    #listing-title {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
   </style>
 </head>
 <body>
@@ -123,7 +118,7 @@
     <input type="number" id="lot" min="0" placeholder="e.g. 500" />
 
     <label>Additional Features / Notes</label>
-    <textarea id="notes" placeholder="e.g. 🌊 Ocean views, 🏊 pool, 🌳 garden..."></textarea>
+    <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
 
     <label>Agency/Agent Details</label>
     <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
@@ -136,24 +131,24 @@
     <input type="file" id="images" multiple accept="image/*" />
     <div id="image-preview"></div>
 
-    <button onclick="generate()">✨ Generate</button>
+    <button onclick="generate()">Generate</button>
 
     <div id="output-container">
-      <h3 id="listing-title"></h3>
+      <h3>Generated Listing:</h3>
       <div id="result"></div>
       <div id="char-count"></div>
 
       <div id="export-buttons">
-        <button onclick="copyToClipboard()">📋 Copy</button>
-        <button onclick="exportToWord()">📝 Export Word</button>
-        <button onclick="exportToPDF()">📄 Export PDF</button>
-        <button onclick="exportToText()">📁 Export Text</button>
-        <button onclick="clearAll()">🧹 Clear</button>
+        <button onclick="copyToClipboard()">Copy</button>
+        <button onclick="exportToWord()">Export Word</button>
+        <button onclick="exportToPDF()">Export PDF</button>
+        <button onclick="exportToText()">Export Text</button>
+        <button onclick="clearAll()">Clear</button>
       </div>
 
       <label>Enhance or Correct Listing (Optional)</label>
       <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
-      <button onclick="applyEnhancement()">💡 Apply Enhancement</button>
+      <button onclick="applyEnhancement()">Apply Enhancement</button>
     </div>
   </div>
 
@@ -185,17 +180,13 @@
         return;
       }
 
-      const titleText = `🏡 ${type} ${status.toLowerCase()} in ${location}`;
-      document.getElementById("listing-title").textContent = titleText;
-      
-      const prompt = `Write a warm, professional, and inviting real estate listing that includes the following:
-      🏡 Type: ${type} | 📍 Location: ${location} | 📌 Status: ${status}
-      🛏 Bedrooms: ${bedrooms} | 🚿 Bathrooms: ${bathrooms} | 🚽 Ensuite: ${ensuites}
-      🚗 Garages: ${garages} | 🏠 Interior: ${interior} m² | 🌾 Lot: ${lot} m²
-      🌟 Special Features: ${notes}
-      👤 Agent Info: ${agent}
-      Please use emojis naturally throughout the description to enhance aesthetic appeal (e.g., 🏡, 🌊, 🌳, ✨, 🏊, 📞) and keep the tone professional and concise.`;
-     
+      const title = `${type} ${status.toLowerCase()} in ${location}`;
+      const prompt = `Create a professional real estate listing for a ${title}.
+        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
+        Living space: ${interior} m². Lot size: ${lot} m².
+        Additional features: ${notes}.
+        Agent: ${agent}.`;
+
       const res = await fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -238,39 +229,30 @@
 
     function exportToText() {
       const text = document.getElementById("result").textContent;
-      const blob = new Blob([text], { type: "text/plain" });
+      const cleaned = text.replace(/Logo:.*(\n)?/, '');
+      const blob = new Blob([cleaned], { type: "text/plain" });
       triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
     }
 
     function exportToWord() {
-      const content = document.getElementById("result").textContent;
+      const text = document.getElementById("result").textContent;
       const logoInput = document.getElementById("logoFile");
-      const imagesInput = document.getElementById("images");
 
-      const imageList = [];
-
-      if (imagesInput && imagesInput.files.length > 0) {
-        const promises = Array.from(imagesInput.files).map(file => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-        });
-
-        Promise.all(promises).then(imageBase64Array => {
-          sendToWord(content, logoImageBase64, imageBase64Array);
-        });
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          sendToWord(text, reader.result);
+        };
+        reader.readAsDataURL(logoInput.files[0]);
       } else {
-        sendToWord(content, logoImageBase64, []);
+        sendToWord(text, "");
       }
 
-      function sendToWord(content, logo, images) {
+      function sendToWord(content, logo) {
         fetch("/export-word", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, logo, images })
+          body: JSON.stringify({ content, logo })
         })
         .then(res => res.blob())
         .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
@@ -281,15 +263,16 @@
     function exportToPDF() {
       const { jsPDF } = window.jspdf;
       const raw = document.getElementById("result").textContent;
+      const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
       const doc = new jsPDF();
-      let y = 20;
 
+      let y = 20;
       if (logoImageBase64) {
         doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
         y = 35;
       }
 
-      const lines = doc.splitTextToSize(raw, 180);
+      const lines = doc.splitTextToSize(stripped, 180);
       doc.text(lines, 15, y);
 
       const pdfBlob = new Blob([doc.output("arraybuffer")], {
@@ -320,10 +303,10 @@
       fields.forEach(id => document.getElementById(id).value = "");
       document.getElementById("result").textContent = "";
       document.getElementById("char-count").textContent = "";
-      document.getElementById("listing-title").textContent = "";
       document.getElementById("output-container").style.display = 'none';
     }
 
+    // Preview logo and save base64
     document.getElementById("logoFile").addEventListener("change", function () {
       const preview = document.getElementById("logo-preview");
       preview.innerHTML = "";
@@ -338,6 +321,9 @@
       reader.onload = function (e) {
         const img = new Image();
         img.src = e.target.result;
+        img.style.maxHeight = "60px";
+        img.style.marginBottom = "8px";
+        img.style.borderRadius = "4px";
         preview.appendChild(img);
         logoImageBase64 = e.target.result;
       };

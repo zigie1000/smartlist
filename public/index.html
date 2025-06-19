@@ -134,7 +134,7 @@
 
     function exportToPDF() {
       const text = document.getElementById("result").textContent;
-      const { jsPDF } = window.jspdf;
+      const jsPDF = window.jspdf.jsPDF; // ✅ Correct access for UMD module
       const doc = new jsPDF();
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);

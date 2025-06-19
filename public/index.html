@@ -34,9 +34,7 @@
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
-    textarea {
-      height: 100px;
-    }
+    textarea { height: 100px; }
     button {
       background: #4CAF50;
       color: white;
@@ -47,9 +45,7 @@
       font-size: 14px;
       margin: 10px 8px 0 0;
     }
-    button:hover {
-      background: #45a049;
-    }
+    button:hover { background: #45a049; }
     #output-container {
       display: none;
       margin-top: 30px;
@@ -127,7 +123,7 @@
     <button onclick="generate()">Generate</button>
 
     <div id="output-container">
-      <h3>Listing Preview</h3>
+      <h3>Generated Listing:</h3>
       <div id="result"></div>
       <div id="char-count"></div>
 
@@ -176,7 +172,8 @@
         It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
         Living space: ${interior} m². Lot size (erf): ${lot} m².
         Additional features: ${notes}.
-        Agent: ${agent}.`;
+        Agent: ${agent}.
+        ${logo ? `Logo: ${logo}` : ''}`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -220,13 +217,13 @@
 
     function exportToText() {
       const text = document.getElementById("result").textContent;
-      const blob = new Blob([text], { type: "text/plain" });
+      const cleaned = text.replace(/Logo:.*(\n)?/, '');
+      const blob = new Blob([cleaned], { type: "text/plain" });
       triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
     }
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,12 +241,13 @@
 
     function exportToPDF() {
       const { jsPDF } = window.jspdf;
+      const text = document.getElementById("result").textContent;
+      const stripped = text.replace(/[\u{1F600}-\u{1F6FF}]/gu, ''); // remove emojis
       const doc = new jsPDF();
-      const text = document.getElementById("result").textContent.replace(/[\u{1F600}-\u{1F64F}]/gu, '');
-      const lines = doc.splitTextToSize(text, 180);
+      const lines = doc.splitTextToSize(stripped, 180);
       doc.text(lines, 15, 20);
       const pdfBlob = new Blob([doc.output("arraybuffer")], {
-        type: "application/pdf"
+        type: "application/octet-stream"
       });
       triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
     }
@@ -271,10 +269,9 @@
     function clearAll() {
       const fields = [
         "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
-        "garages", "interior", "lot", "notes", "enhance", "logo"
+        "garages", "interior", "lot", "notes", "enhance", "agent", "logo"
       ];
       fields.forEach(id => document.getElementById(id).value = "");
-      // Preserve agent field
       document.getElementById("result").textContent = "";
       document.getElementById("char-count").textContent = "";
       document.getElementById("output-container").style.display = 'none';

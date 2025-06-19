@@ -61,10 +61,14 @@
       border-radius: 6px;
     }
     #export-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
+      display: none;
+      margin-top: 10px;
+    }
+    #char-count {
+      text-align: right;
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -113,10 +117,6 @@
       <h3>Generated Listing:</h3>
       <div id="result"></div>
 
-      <label>Enhance or Correct Listing (Optional)</label>
-      <textarea id="enhance" placeholder="e.g. Correct any errors in the listing, fix spelling, improve flow, or add more detail (e.g. garden, kitchen features, etc.)"></textarea>
-      <button onclick="applyEnhancement()">Apply Enhancement</button>
-
       <div id="export-buttons">
         <button onclick="copyToClipboard()">Copy</button>
         <button onclick="exportToWord()">Export Word</button>
@@ -124,6 +124,11 @@
         <button onclick="exportToText()">Export Text</button>
         <button onclick="clearAll()">Clear</button>
       </div>
+
+      <label>Enhance or Correct Listing (Optional)</label>
+      <textarea id="enhance" placeholder="Correct any errors, add more details (e.g. garden), fix spelling, or ask for a shorter version (e.g. under 300 characters)"></textarea>
+      <div id="char-count">0 characters</div>
+      <button onclick="applyEnhancement()">Apply Enhancement</button>
     </div>
   </div>
 
@@ -164,8 +169,8 @@
       const output = data.result || "Something went wrong.";
       document.getElementById("result").textContent = output;
       document.getElementById("output-container").style.display = 'block';
-      document.getElementById("export-buttons").style.display = 'flex';
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("export-buttons").style.display = 'block';
+      window.scrollTo({ top: 300, behavior: "smooth" });
     }
 
     function applyEnhancement() {
@@ -184,7 +189,8 @@
       .then(data => {
         document.getElementById("result").textContent = data.result || original;
         document.getElementById("enhance").value = "";
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        document.getElementById("char-count").textContent = "0 characters";
+        window.scrollTo({ top: 300, behavior: "smooth" });
       });
     }
 
@@ -250,8 +256,14 @@
       document.getElementById("result").textContent = "";
       document.getElementById("output-container").style.display = 'none';
       document.getElementById("export-buttons").style.display = 'none';
+      document.getElementById("char-count").textContent = "0 characters";
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+
+    document.getElementById("enhance").addEventListener("input", () => {
+      const len = document.getElementById("enhance").value.length;
+      document.getElementById("char-count").textContent = `${len} characters`;
+    });
   </script>
 </body>
 </html>

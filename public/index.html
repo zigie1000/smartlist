@@ -74,6 +74,7 @@
         <button onclick="exportToWord()">Export Word</button>
         <button onclick="exportToPDF()">Export PDF</button>
         <button onclick="exportToText()">Export Text</button>
+        <button onclick="clearOutput()">Clear</button>
       </div>
     </div>
   </div>
@@ -102,7 +103,6 @@
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("export-buttons").style.display = 'block';
 
-      // Auto-scroll + clear prompt
       window.scrollTo({ top: 0, behavior: "smooth" });
       document.getElementById("prompt").value = "";
     }
@@ -148,6 +148,13 @@
       });
 
       triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+    }
+
+    function clearOutput() {
+      document.getElementById("result").textContent = "";
+      document.getElementById("output-container").style.display = 'none';
+      document.getElementById("export-buttons").style.display = 'none';
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function triggerDownload(blob, filename) {

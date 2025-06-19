@@ -34,7 +34,9 @@
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
-    textarea { height: 100px; }
+    textarea {
+      height: 100px;
+    }
     button {
       background: #4CAF50;
       color: white;
@@ -45,7 +47,9 @@
       font-size: 14px;
       margin: 10px 8px 0 0;
     }
-    button:hover { background: #45a049; }
+    button:hover {
+      background: #45a049;
+    }
     #output-container {
       display: none;
       margin-top: 30px;
@@ -94,31 +98,31 @@
     <input type="text" id="location" placeholder="e.g. Sea Point, Cape Town" />
 
     <label>Bedrooms</label>
-    <input type="number" id="bedrooms" min="0" placeholder="e.g. 3" />
+    <input type="number" id="bedrooms" min="0" />
 
     <label>Bathrooms</label>
-    <input type="number" id="bathrooms" min="0" placeholder="e.g. 2" />
+    <input type="number" id="bathrooms" min="0" />
 
     <label>Ensuite Bathrooms</label>
-    <input type="number" id="ensuites" min="0" placeholder="e.g. 1" />
+    <input type="number" id="ensuites" min="0" />
 
     <label>Garages</label>
-    <input type="number" id="garages" min="0" placeholder="e.g. 2" />
+    <input type="number" id="garages" min="0" />
 
     <label>Living Space Area (m²)</label>
-    <input type="number" id="interior" min="0" placeholder="e.g. 120" />
+    <input type="number" id="interior" min="0" />
 
     <label>Lot Size / Erf Size (m²)</label>
-    <input type="number" id="lot" min="0" placeholder="e.g. 500" />
+    <input type="number" id="lot" min="0" />
 
     <label>Additional Features / Notes</label>
     <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
 
     <label>Agency/Agent Details</label>
-    <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
+    <textarea id="agent" placeholder="e.g. John Doe&#10;Example Realty&#10;0712345678&#10;john@example.com"></textarea>
 
     <label>Logo Image URL (Optional)</label>
-    <input type="text" id="logo" placeholder="e.g. https://example.com/logo.png" />
+    <input type="text" id="logo" placeholder="https://example.com/logo.png" />
 
     <button onclick="generate()">Generate</button>
 
@@ -136,17 +140,19 @@
       </div>
 
       <label>Enhance or Correct Listing (Optional)</label>
-      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden, or request a version under 600 characters..."></textarea>
+      <textarea id="enhance" placeholder="e.g. Fix grammar, add garden detail, or request version under 500 characters..."></textarea>
       <button onclick="applyEnhancement()">Apply Enhancement</button>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    function getTimestampFilename(base, extension) {
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/[:.]/g, '-');
-      return `${base}_${timestamp}.${extension}`;
+    function stripEmojis(text) {
+      return text.replace(/[\u{1F300}-\u{1F6FF}]/gu, '');
+    }
+
+    function getTitle(type, location, status) {
+      return type && location && status ? `${type} in ${location} – ${status}` : "";
     }
 
     async function generate() {
@@ -164,16 +170,16 @@
       const logo = document.getElementById("logo").value.trim();
 
       if (!type || !status || !location) {
-        alert("Please fill in at least type, status, and location.");
+        alert("Please fill in type, status, and location.");
         return;
       }
 
+      const title = getTitle(type, location, status);
       const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}.
-        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
-        Living space: ${interior} m². Lot size (erf): ${lot} m².
-        Additional features: ${notes}.
-        Agent: ${agent}.
-        ${logo ? `Logo: ${logo}` : ''}`;
+It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} en-suite), ${garages} garages.
+Living space: ${interior} m². Lot size (erf): ${lot} m².
+Additional features: ${notes}.
+Agent: ${agent}.`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -182,23 +188,23 @@
       });
 
       const data = await res.json();
-      const output = data.result || "Something went wrong.";
-      document.getElementById("result").textContent = output;
-      document.getElementById("char-count").textContent = `Character count: ${output.length}`;
+      const result = `${title}\n\n${data.result || "Something went wrong."}`;
+      document.getElementById("result").textContent = result;
+      document.getElementById("char-count").textContent = `Character count: ${result.length}`;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
     }
 
     function applyEnhancement() {
       const enhancement = document.getElementById("enhance").value.trim();
-      if (!enhancement) return alert("Please enter an enhancement.");
+      if (!enhancement) return alert("Please enter enhancement text.");
       const original = document.getElementById("result").textContent;
-      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+      const prompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
 
       fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: newPrompt })
+        body: JSON.stringify({ prompt })
       })
       .then(res => res.json())
       .then(data => {
@@ -211,15 +217,14 @@
     }
 
     function copyToClipboard() {
-      const text = document.getElementById("result").textContent;
-      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+      navigator.clipboard.writeText(document.getElementById("result").textContent)
+        .then(() => alert("✅ Copied to clipboard!"));
     }
 
     function exportToText() {
       const text = document.getElementById("result").textContent;
-      const cleaned = text.replace(/Logo:.*(\n)?/, '');
-      const blob = new Blob([cleaned], { type: "text/plain" });
-      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+      const blob = new Blob([text], { type: "text/plain" });
+      triggerDownload(blob, "Listing.txt");
     }
 
     function exportToWord() {
@@ -229,27 +234,23 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text })
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to export DOCX.");
-        return res.blob();
-      })
-      .then(blob => {
-        triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
-      })
-      .catch(err => alert("❌ " + err.message));
+      .then(res => res.blob())
+      .then(blob => triggerDownload(blob, "Listing.docx"))
+      .catch(() => alert("❌ Word export failed."));
     }
 
     function exportToPDF() {
       const { jsPDF } = window.jspdf;
-      const text = document.getElementById("result").textContent;
-      const stripped = text.replace(/[\u{1F600}-\u{1F6FF}]/gu, ''); // remove emojis
       const doc = new jsPDF();
-      const lines = doc.splitTextToSize(stripped, 180);
+      const content = stripEmojis(document.getElementById("result").textContent);
+      const lines = doc.splitTextToSize(content, 180);
+      doc.setFont("Helvetica");
+      doc.setFontSize(12);
       doc.text(lines, 15, 20);
       const pdfBlob = new Blob([doc.output("arraybuffer")], {
-        type: "application/octet-stream"
+        type: "application/pdf"
       });
-      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+      triggerDownload(pdfBlob, "Listing.pdf");
     }
 
     function triggerDownload(blob, filename) {
@@ -267,11 +268,13 @@
     }
 
     function clearAll() {
-      const fields = [
-        "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
-        "garages", "interior", "lot", "notes", "enhance", "agent", "logo"
-      ];
-      fields.forEach(id => document.getElementById(id).value = "");
+      const keep = document.getElementById("agent").value;
+      const logo = document.getElementById("logo").value;
+      ["type", "status", "location", "bedrooms", "bathrooms", "ensuites", "garages", "interior", "lot", "notes", "enhance"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+      document.getElementById("agent").value = keep;
+      document.getElementById("logo").value = logo;
       document.getElementById("result").textContent = "";
       document.getElementById("char-count").textContent = "";
       document.getElementById("output-container").style.display = 'none';

@@ -187,13 +187,15 @@
 
       const titleText = `🏡 ${type} ${status.toLowerCase()} in ${location}`;
       document.getElementById("listing-title").textContent = titleText;
-
-      const prompt = `Create a professional real estate listing for a ${titleText}.
-        🛏 ${bedrooms} bedrooms, 🚿 ${bathrooms} bathrooms (${ensuites} ensuite), 🚗 ${garages} garages.
-        🏠 Living space: ${interior} m². 🌾 Lot size: ${lot} m².
-        ✨ Features: ${notes}.
-        👤 Agent: ${agent}.`;
-
+      
+      const prompt = `Write a warm, professional, and inviting real estate listing that includes the following:
+      🏡 Type: ${type} | 📍 Location: ${location} | 📌 Status: ${status}
+      🛏 Bedrooms: ${bedrooms} | 🚿 Bathrooms: ${bathrooms} | 🚽 Ensuite: ${ensuites}
+      🚗 Garages: ${garages} | 🏠 Interior: ${interior} m² | 🌾 Lot: ${lot} m²
+      🌟 Special Features: ${notes}
+      👤 Agent Info: ${agent}
+      Please use emojis naturally throughout the description to enhance aesthetic appeal (e.g., 🏡, 🌊, 🌳, ✨, 🏊, 📞) and keep the tone professional and concise.`;
+     
       const res = await fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -127,12 +127,15 @@
     }
 
     function exportToPDF() {
-      const text = document.getElementById("result").textContent;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+      const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const pdfBlob = doc.output("blob");
+
+      const pdfBlob = new Blob([doc.output("arraybuffer")], {
+        type: "application/octet-stream"
+      });
 
       triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
     }

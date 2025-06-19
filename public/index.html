@@ -371,7 +371,7 @@ async function generate() {
       ${interior ? `<li>🏡 Living Space: ${interior} m²</li>` : ''}
       ${lot ? `<li>🌳 Lot Size: ${lot} m²</li>` : ''}
     </ul>
-    ${notes && !notes.startsWith('[') ? `<h4>Additional Features:</h4><p>✨ ${notes}</p>` : ''}
+    ${notes && !notes.startsWith("[") && !notes.toLowerCase().includes("insert") ? `<h4>Additional Features:</h4><p>✨ ${notes}</p>` : ''}
     ${agent && !agent.includes('[Insert Agent') ? `<h4>Agent Details:</h4><p>🔑 Listed by:<br>${agent.replaceAll('\n', '<br/>').replace(/(\d{10,})/, '📞 $1').replace(/(\S+@\S+)/, '📧 $1')}</p>` : ''}
   `;
 

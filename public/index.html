@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PromptAgentHQ | Real Estate Listing Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
+<meta charset="utf-8"/>
+<title>PromptAgentHQ | Real Estate Listing Generator</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<style>
     body {
       font-family: 'Segoe UI', sans-serif;
       background: #f4f4f4;
@@ -76,84 +77,66 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
-
-    <label>Listing Type</label>
-    <select id="type">
-      <option value="">Select Type</option>
-      <option value="Apartment">Apartment</option>
-      <option value="House">House</option>
-      <option value="Townhouse">Townhouse</option>
-      <option value="Penthouse">Penthouse</option>
-      <option value="Studio">Studio</option>
-    </select>
-
-    <label>Status</label>
-    <select id="status">
-      <option value="">Select Status</option>
-      <option value="For Sale">For Sale</option>
-      <option value="For Rent">For Rent</option>
-    </select>
-
-    <label>Location</label>
-    <input type="text" id="location" placeholder="e.g. Sea Point, Cape Town" />
-
-    <label>Bedrooms</label>
-    <input type="number" id="bedrooms" min="0" placeholder="e.g. 3" />
-
-    <label>Bathrooms</label>
-    <input type="number" id="bathrooms" min="0" placeholder="e.g. 2" />
-
-    <label>Ensuite Bathrooms</label>
-    <input type="number" id="ensuites" min="0" placeholder="e.g. 1" />
-
-    <label>Garages</label>
-    <input type="number" id="garages" min="0" placeholder="e.g. 2" />
-
-    <label>Living Space Area (m²)</label>
-    <input type="number" id="interior" min="0" placeholder="e.g. 120" />
-
-    <label>Lot Size / Erf Size (m²)</label>
-    <input type="number" id="lot" min="0" placeholder="e.g. 500" />
-
-    <label>Additional Features / Notes</label>
-    <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
-
-    <label>Agency/Agent Details</label>
-    <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
-
-    <label>Upload Logo Image (Max 2MB)</label>
-    <input type="file" id="logoFile" accept="image/*" />
-    <div id="logo-preview"></div>
-
-    <label>Upload Property Images (Max 3, 2MB each)</label>
-    <input type="file" id="images" multiple accept="image/*" />
-    <div id="image-preview"></div>
-
-    <button onclick="generate()">Generate</button>
-
-    <div id="output-container">
-      <h3>Generated Listing:</h3>
-      <div id="result"></div>
-      <div id="char-count"></div>
-
-      <div id="export-buttons">
-        <button onclick="copyToClipboard()">Copy</button>
-        <button onclick="exportToWord()">Export Word</button>
-        <button onclick="exportToPDF()">Export PDF</button>
-        <button onclick="exportToText()">Export Text</button>
-        <button onclick="clearAll()">Clear</button>
-      </div>
-
-      <label>Enhance or Correct Listing (Optional)</label>
-      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
-      <button onclick="applyEnhancement()">Apply Enhancement</button>
-    </div>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
+<div class="container">
+<h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
+<label>Listing Type</label>
+<select id="type">
+<option value="">Select Type</option>
+<option value="Apartment">Apartment</option>
+<option value="House">House</option>
+<option value="Townhouse">Townhouse</option>
+<option value="Penthouse">Penthouse</option>
+<option value="Studio">Studio</option>
+</select>
+<label>Status</label>
+<select id="status">
+<option value="">Select Status</option>
+<option value="For Sale">For Sale</option>
+<option value="For Rent">For Rent</option>
+</select>
+<label>Location</label>
+<input id="location" placeholder="e.g. Sea Point, Cape Town" type="text"/>
+<label>Bedrooms</label>
+<input id="bedrooms" min="0" placeholder="e.g. 3" type="number"/>
+<label>Bathrooms</label>
+<input id="bathrooms" min="0" placeholder="e.g. 2" type="number"/>
+<label>Ensuite Bathrooms</label>
+<input id="ensuites" min="0" placeholder="e.g. 1" type="number"/>
+<label>Garages</label>
+<input id="garages" min="0" placeholder="e.g. 2" type="number"/>
+<label>Living Space Area (m²)</label>
+<input id="interior" min="0" placeholder="e.g. 120" type="number"/>
+<label>Lot Size / Erf Size (m²)</label>
+<input id="lot" min="0" placeholder="e.g. 500" type="number"/>
+<label>Additional Features / Notes</label>
+<textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
+<label>Agency/Agent Details</label>
+<textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
+<label>Upload Logo Image (Max 2MB)</label>
+<input accept="image/*" id="logoFile" type="file"/>
+<div id="logo-preview"></div>
+<label>Upload Property Images (Max 3, 2MB each)</label>
+<input accept="image/*" id="images" multiple="" type="file"/>
+<div id="image-preview"></div>
+<button onclick="generate()">Generate</button>
+<div id="output-container">
+<h3>Generated Listing:</h3>
+<div id="result"></div>
+<div id="char-count"></div>
+<div id="export-buttons">
+<button onclick="copyToClipboard()">Copy</button>
+<button onclick="exportToWord()">Export Word</button>
+<button onclick="exportToPDF()">Export PDF</button>
+<button onclick="exportToText()">Export Text</button>
+<button onclick="clearAll()">Clear</button>
+</div>
+<label>Enhance or Correct Listing (Optional)</label>
+<textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
+<button onclick="applyEnhancement()">Apply Enhancement</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
     let logoImageBase64 = "";
 
     function getTimestampFilename(base, extension) {

@@ -109,6 +109,12 @@
     <label>Garages</label>
     <input type="number" id="garages" min="0" placeholder="e.g. 2" />
 
+    <label>Living Space Area (m²)</label>
+    <input type="number" id="interior" min="0" placeholder="e.g. 120" />
+
+    <label>Lot Size / Erf Size (m²)</label>
+    <input type="number" id="lot" min="0" placeholder="e.g. 500" />
+
     <label>Additional Features / Notes</label>
     <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
 
@@ -149,6 +155,8 @@
       const bathrooms = document.getElementById("bathrooms").value;
       const ensuites = document.getElementById("ensuites").value;
       const garages = document.getElementById("garages").value;
+      const interior = document.getElementById("interior").value;
+      const lot = document.getElementById("lot").value;
       const notes = document.getElementById("notes").value.trim();
 
       if (!type || !status || !location) {
@@ -156,9 +164,9 @@
         return;
       }
 
-      const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}. 
-        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages. 
-        Additional features include: ${notes}`;
+      const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}.
+        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
+        Living space: ${interior} m². Lot size (erf): ${lot} m². Additional features include: ${notes}`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -171,6 +179,7 @@
       document.getElementById("result").textContent = output;
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;
       document.getElementById("output-container").style.display = 'block';
+      document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
     }
 
     function applyEnhancement() {
@@ -251,7 +260,10 @@
     }
 
     function clearAll() {
-      const fields = ["type", "status", "location", "bedrooms", "bathrooms", "ensuites", "garages", "notes", "enhance"];
+      const fields = [
+        "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
+        "garages", "interior", "lot", "notes", "enhance"
+      ];
       fields.forEach(id => document.getElementById(id).value = "");
       document.getElementById("result").textContent = "";
       document.getElementById("char-count").textContent = "";

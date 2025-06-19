@@ -134,17 +134,7 @@
       doc.text(lines, 15, 20);
       const pdfBlob = doc.output("blob");
 
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "PromptAgentHQ_Listing.pdf";
-      a.style.display = "none";
-      a.rel = "noopener";
-      a.target = "_blank";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
     }
 
     function triggerDownload(blob, filename) {

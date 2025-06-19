@@ -67,6 +67,11 @@
       font-size: 13px;
       color: #555;
     }
+    #image-preview img {
+      max-height: 100px;
+      margin-right: 10px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -120,6 +125,10 @@
     <label>Logo Image URL (Optional)</label>
     <input type="text" id="logo" placeholder="e.g. https://example.com/logo.png" />
 
+    <label>Upload Property Images (Max 3, 1MB each)</label>
+    <input type="file" id="images" multiple accept="image/*" />
+    <div id="image-preview"></div>
+
     <button onclick="generate()">Generate</button>
 
     <div id="output-container">
@@ -159,7 +168,7 @@
       const garages = document.getElementById("garages").value;
       const interior = document.getElementById("interior").value;
       const lot = document.getElementById("lot").value;
-      const notes = document.getElementById("notes").value.trim();
+      const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
       const agent = document.getElementById("agent").value.trim();
       const logo = document.getElementById("logo").value.trim();
 
@@ -168,9 +177,10 @@
         return;
       }
 
-      const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}.
+      const title = `${type} ${status.toLowerCase()} in ${location}`;
+      const prompt = `Create a professional real estate listing for a ${title}.
         It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
-        Living space: ${interior} m². Lot size (erf): ${lot} m².
+        Living space: ${interior} m². Lot size: ${lot} m².
         Additional features: ${notes}.
         Agent: ${agent}.
         ${logo ? `Logo: ${logo}` : ''}`;
@@ -229,13 +239,8 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text })
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to export DOCX.");
-        return res.blob();
-      })
-      .then(blob => {
-        triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
-      })
+      .then(res => res.blob())
+      .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
       .catch(err => alert("❌ " + err.message));
     }
 
@@ -291,6 +296,32 @@
 
     document.getElementById("logo").addEventListener("input", () => {
       localStorage.setItem("logoURL", document.getElementById("logo").value);
+    });
+
+    document.getElementById("images").addEventListener("change", function () {
+      const preview = document.getElementById("image-preview");
+      preview.innerHTML = "";
+      const files = Array.from(this.files);
+      if (files.length > 3) {
+        alert("Maximum 3 images allowed.");
+        this.value = "";
+        return;
+      }
+      files.forEach(file => {
+        if (file.size > 1 * 1024 * 1024) {
+          alert(`${file.name} exceeds 1MB limit.`);
+          this.value = "";
+          preview.innerHTML = "";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = new Image();
+          img.src = e.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
     });
   </script>
 </body>

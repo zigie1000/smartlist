@@ -20,13 +20,18 @@
       border-radius: 12px;
       box-shadow: 0 0 12px rgba(0,0,0,0.08);
     }
-    textarea, select, input {
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, textarea {
       width: 100%;
       padding: 10px;
       font-size: 16px;
-      margin-top: 10px;
+      margin-top: 4px;
       border-radius: 6px;
       border: 1px solid #ccc;
+      box-sizing: border-box;
     }
     button {
       background: #4CAF50;
@@ -61,43 +66,44 @@
   <div class="container">
     <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
 
-    <label>Status:</label>
+    <label>Status</label>
     <select id="status">
+      <option value="">-- Select --</option>
       <option value="For Sale">For Sale</option>
-      <option value="To Rent">To Rent</option>
+      <option value="For Rent">For Rent</option>
     </select>
 
-    <label>Property Type:</label>
+    <label>Property Type</label>
     <select id="type">
+      <option value="">-- Select --</option>
       <option value="House">House</option>
       <option value="Apartment">Apartment</option>
       <option value="Townhouse">Townhouse</option>
-      <option value="Vacant Land">Vacant Land</option>
-      <option value="Commercial">Commercial</option>
+      <option value="Penthouse">Penthouse</option>
+      <option value="Studio">Studio</option>
+      <option value="Villa">Villa</option>
     </select>
 
-    <label>Number of Bedrooms:</label>
-    <input type="number" id="bedrooms" min="0" />
+    <label>Bedrooms</label>
+    <input type="number" id="bedrooms" placeholder="e.g. 3" />
 
-    <label>Number of Bathrooms:</label>
-    <input type="number" id="bathrooms" min="0" />
+    <label>Bathrooms</label>
+    <input type="number" id="bathrooms" placeholder="e.g. 2" />
 
-    <label>Number of Ensuites:</label>
-    <input type="number" id="ensuites" min="0" />
+    <label>Ensuite Bathrooms</label>
+    <input type="number" id="ensuites" placeholder="e.g. 1" />
 
-    <label>Garages:</label>
-    <input type="number" id="garages" min="0" />
+    <label>Garages</label>
+    <input type="number" id="garages" placeholder="e.g. 2" />
 
-    <label>Key Features:</label>
-    <textarea id="features" placeholder="e.g. Ocean views, pool, large garden, security system..."></textarea>
+    <label>Special Features (comma separated)</label>
+    <input type="text" id="features" placeholder="e.g. pool, ocean view, garden" />
 
-    <label>Additional Notes:</label>
-    <textarea id="notes" placeholder="e.g. Close to schools, pets allowed..."></textarea>
+    <label>Additional Notes</label>
+    <textarea id="notes" placeholder="Any other selling points or details..."></textarea>
 
-    <button onclick="buildPrompt()">Build Prompt</button>
-
-    <label>Final Prompt:</label>
-    <textarea id="prompt" placeholder="Prompt will be built above or entered here manually"></textarea>
+    <label>Or Freeform Prompt</label>
+    <textarea id="prompt" placeholder="Write your own listing details here..."></textarea>
 
     <button onclick="generate()">Generate</button>
 
@@ -122,34 +128,31 @@
       return `${base}_${timestamp}.${extension}`;
     }
 
-    function buildPrompt() {
+    async function generate() {
+      const promptField = document.getElementById("prompt").value.trim();
       const status = document.getElementById("status").value;
       const type = document.getElementById("type").value;
       const bedrooms = document.getElementById("bedrooms").value;
       const bathrooms = document.getElementById("bathrooms").value;
       const ensuites = document.getElementById("ensuites").value;
       const garages = document.getElementById("garages").value;
-      const features = document.getElementById("features").value.trim();
-      const notes = document.getElementById("notes").value.trim();
+      const features = document.getElementById("features").value;
+      const notes = document.getElementById("notes").value;
 
-      let prompt = `${status} ${bedrooms}-bedroom ${type}`;
-      if (bathrooms) prompt += ` with ${bathrooms} bathroom${bathrooms > 1 ? 's' : ''}`;
-      if (ensuites) prompt += ` (${ensuites} en-suite)`;
-      if (garages) prompt += ` and ${garages} garage${garages > 1 ? 's' : ''}`;
-      if (features) prompt += `. Features include: ${features}`;
-      if (notes) prompt += `. Notes: ${notes}`;
-
-      document.getElementById("prompt").value = prompt;
-    }
-
-    async function generate() {
-      const prompt = document.getElementById("prompt").value.trim();
-      if (!prompt) return alert("Please enter property details.");
+      let constructedPrompt = promptField;
+      if (!constructedPrompt) {
+        constructedPrompt = `${bedrooms || 'N'}-bedroom ${type || 'property'} ${status ? 'available ' + status.toLowerCase() : ''}`;
+        if (bathrooms) constructedPrompt += ` with ${bathrooms} bathroom${bathrooms > 1 ? 's' : ''}`;
+        if (ensuites) constructedPrompt += ` (${ensuites} ensuite)`;
+        if (garages) constructedPrompt += ` and ${garages} garage${garages > 1 ? 's' : ''}`;
+        if (features) constructedPrompt += ` featuring ${features}`;
+        if (notes) constructedPrompt += `. Additional notes: ${notes}`;
+      }
 
       const res = await fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt: constructedPrompt })
       });
 
       const data = await res.json();
@@ -157,7 +160,6 @@
       document.getElementById("result").textContent = output;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("export-buttons").style.display = 'block';
-
       window.scrollTo({ top: 0, behavior: "smooth" });
       document.getElementById("prompt").value = "";
     }
@@ -175,7 +177,6 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,6 +210,15 @@
       document.getElementById("result").textContent = "";
       document.getElementById("output-container").style.display = 'none';
       document.getElementById("export-buttons").style.display = 'none';
+      document.getElementById("prompt").value = "";
+      document.getElementById("status").selectedIndex = 0;
+      document.getElementById("type").selectedIndex = 0;
+      document.getElementById("bedrooms").value = "";
+      document.getElementById("bathrooms").value = "";
+      document.getElementById("ensuites").value = "";
+      document.getElementById("garages").value = "";
+      document.getElementById("features").value = "";
+      document.getElementById("notes").value = "";
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 

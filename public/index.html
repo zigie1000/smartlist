@@ -20,14 +20,22 @@
       border-radius: 12px;
       box-shadow: 0 0 12px rgba(0,0,0,0.08);
     }
-    textarea, select, input[type="text"] {
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select, textarea {
       width: 100%;
       padding: 10px;
       font-size: 16px;
-      margin-top: 10px;
+      margin-top: 5px;
       border-radius: 6px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+    }
+    textarea {
+      height: 100px;
     }
     button {
       background: #4CAF50;
@@ -62,41 +70,40 @@
   <div class="container">
     <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
 
-    <label>Status:</label>
-    <select id="status">
-      <option value="">Select</option>
-      <option value="For Sale">For Sale</option>
-      <option value="To Rent">To Rent</option>
-    </select>
-
-    <label>Property Type:</label>
+    <label>Listing Type</label>
     <select id="type">
-      <option value="">Select</option>
+      <option value="">Select Type</option>
       <option value="Apartment">Apartment</option>
       <option value="House">House</option>
       <option value="Townhouse">Townhouse</option>
-      <option value="Vacant Land">Vacant Land</option>
-      <option value="Farm">Farm</option>
-      <option value="Commercial Property">Commercial Property</option>
+      <option value="Penthouse">Penthouse</option>
+      <option value="Studio">Studio</option>
     </select>
 
-    <label>Bedrooms:</label>
-    <input type="text" id="bedrooms" placeholder="e.g. 3" />
+    <label>Status</label>
+    <select id="status">
+      <option value="">Select Status</option>
+      <option value="For Sale">For Sale</option>
+      <option value="For Rent">For Rent</option>
+    </select>
 
-    <label>Bathrooms:</label>
-    <input type="text" id="bathrooms" placeholder="e.g. 2 including 1 en-suite" />
-
-    <label>Garages:</label>
-    <input type="text" id="garages" placeholder="e.g. 2" />
-
-    <label>Location:</label>
+    <label>Location</label>
     <input type="text" id="location" placeholder="e.g. Sea Point, Cape Town" />
 
-    <label>Additional Features / Notes:</label>
-    <textarea id="notes" placeholder="e.g. Ocean views, swimming pool, pet-friendly, inverter system, etc."></textarea>
+    <label>Bedrooms</label>
+    <input type="number" id="bedrooms" min="0" placeholder="e.g. 3" />
 
-    <label>Or Freeform Prompt (optional):</label>
-    <textarea id="prompt" placeholder="Write a custom description instead..."></textarea>
+    <label>Bathrooms</label>
+    <input type="number" id="bathrooms" min="0" placeholder="e.g. 2" />
+
+    <label>Ensuite Bathrooms</label>
+    <input type="number" id="ensuites" min="0" placeholder="e.g. 1" />
+
+    <label>Garages</label>
+    <input type="number" id="garages" min="0" placeholder="e.g. 2" />
+
+    <label>Additional Features / Notes</label>
+    <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
 
     <button onclick="generate()">Generate</button>
 
@@ -104,16 +111,16 @@
       <h3>Generated Listing:</h3>
       <div id="result"></div>
 
-      <label style="margin-top: 20px;">Enhance Listing:</label>
-      <textarea id="enhance" placeholder="e.g. Add more emotion or describe views in more detail..."></textarea>
-      <button onclick="enhance()">Enhance</button>
+      <label>Enhance or Correct Listing (Optional)</label>
+      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
+      <button onclick="applyEnhancement()">Apply Enhancement</button>
 
       <div id="export-buttons">
         <button onclick="copyToClipboard()">Copy</button>
         <button onclick="exportToWord()">Export Word</button>
         <button onclick="exportToPDF()">Export PDF</button>
         <button onclick="exportToText()">Export Text</button>
-        <button onclick="clearOutput()">Clear</button>
+        <button onclick="clearAll()">Clear</button>
       </div>
     </div>
   </div>
@@ -127,20 +134,23 @@
     }
 
     async function generate() {
-      const promptField = document.getElementById("prompt").value.trim();
+      const type = document.getElementById("type").value;
+      const status = document.getElementById("status").value;
+      const location = document.getElementById("location").value.trim();
+      const bedrooms = document.getElementById("bedrooms").value;
+      const bathrooms = document.getElementById("bathrooms").value;
+      const ensuites = document.getElementById("ensuites").value;
+      const garages = document.getElementById("garages").value;
+      const notes = document.getElementById("notes").value.trim();
 
-      let prompt = promptField;
-      if (!prompt) {
-        const status = document.getElementById("status").value;
-        const type = document.getElementById("type").value;
-        const bedrooms = document.getElementById("bedrooms").value.trim();
-        const bathrooms = document.getElementById("bathrooms").value.trim();
-        const garages = document.getElementById("garages").value.trim();
-        const location = document.getElementById("location").value.trim();
-        const notes = document.getElementById("notes").value.trim();
-
-        prompt = `${status ? status + " " : ""}${bedrooms}-bedroom ${type}${location ? " in " + location : ""}${bathrooms ? ", " + bathrooms + " bathrooms" : ""}${garages ? ", " + garages + " garages" : ""}${notes ? ", " + notes : ""}`;
+      if (!type || !status || !location) {
+        alert("Please fill in at least type, status, and location.");
+        return;
       }
+
+      const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}. 
+        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages. 
+        Additional features include: ${notes}`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -156,27 +166,24 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    async function enhance() {
+    function applyEnhancement() {
       const enhancement = document.getElementById("enhance").value.trim();
-      const originalText = document.getElementById("result").textContent.trim();
+      if (!enhancement) return alert("Please enter an enhancement.");
 
-      if (!enhancement) {
-        alert("Please enter an enhancement prompt.");
-        return;
-      }
+      const original = document.getElementById("result").textContent;
+      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
 
-      const res = await fetch("/enhance", {
+      fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ original: originalText, enhance: enhancement })
+        body: JSON.stringify({ prompt: newPrompt })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("result").textContent = data.result || original;
+        document.getElementById("enhance").value = ""; // ✅ Clears enhancement box
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
-
-      const data = await res.json();
-      const output = data.result || "Something went wrong during enhancement.";
-      document.getElementById("result").textContent = output;
-
-      // Clear enhancement field after applying
-      document.getElementById("enhance").value = "";
     }
 
     function copyToClipboard() {
@@ -214,31 +221,11 @@
       const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-
       const pdfBlob = new Blob([doc.output("arraybuffer")], {
         type: "application/octet-stream"
       });
 
       triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-    }
-
-    function clearOutput() {
-      document.getElementById("result").textContent = "";
-      document.getElementById("output-container").style.display = 'none';
-      document.getElementById("export-buttons").style.display = 'none';
-
-      // Clear all fields
-      document.getElementById("status").value = "";
-      document.getElementById("type").value = "";
-      document.getElementById("bedrooms").value = "";
-      document.getElementById("bathrooms").value = "";
-      document.getElementById("garages").value = "";
-      document.getElementById("location").value = "";
-      document.getElementById("notes").value = "";
-      document.getElementById("prompt").value = "";
-      document.getElementById("enhance").value = "";
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function triggerDownload(blob, filename) {
@@ -253,6 +240,15 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      const fields = ["type", "status", "location", "bedrooms", "bathrooms", "ensuites", "garages", "notes", "enhance"];
+      fields.forEach(id => document.getElementById(id).value = "");
+      document.getElementById("result").textContent = "";
+      document.getElementById("output-container").style.display = 'none';
+      document.getElementById("export-buttons").style.display = 'none';
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   </script>
 </body>

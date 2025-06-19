@@ -201,37 +201,25 @@
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
     }
 
-    function applyEnhancement() {
-      const enhancement = document.getElementById("enhance").value.trim();
-      if (!enhancement) return alert("Please enter an enhancement.");
-      const original = document.getElementById("result").textContent;
-      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 20;
 
-      fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: newPrompt })
-      })
-      .then(res => res.json())
-      .then(data => {
-        const updated = data.result || original;
-        document.getElementById("result").textContent = updated;
-        document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
-        document.getElementById("enhance").value = "";
-        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+      if (logoImageBase64) {
+        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
+        y += 20;
+      }
+
+      const raw = document.getElementById("result").textContent;
+      const cleanText = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+      const lines = doc.splitTextToSize(cleanText, 180);
+      doc.text(lines, 15, y + 10);
+
+      const pdfBlob = new Blob([doc.output("arraybuffer")], {
+        type: "application/octet-stream"
       });
-    }
-
-    function copyToClipboard() {
-      const text = document.getElementById("result").textContent;
-      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
-    }
-
-    function exportToText() {
-      const text = document.getElementById("result").textContent;
-      const cleaned = text.replace(/Logo:.*(\n)?/, '');
-      const blob = new Blob([cleaned], { type: "text/plain" });
-      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
     }
 
     function exportToWord() {
@@ -260,45 +248,54 @@
       }
     }
 
-    function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const raw = document.getElementById("result").textContent;
-      const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
-      const doc = new jsPDF();
-
-      let y = 20;
-      if (logoImageBase64) {
-        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
-        y = 35;
-      }
-
-      const lines = doc.splitTextToSize(stripped, 180);
-      doc.text(lines, 15, y);
-
-      const pdfBlob = new Blob([doc.output("arraybuffer")], {
-        type: "application/octet-stream"
-      });
-      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-    }
-
     function triggerDownload(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       a.style.display = 'none';
-      a.rel = "noopener";
-      a.target = "_self";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
 
+    function copyToClipboard() {
+      const text = document.getElementById("result").textContent;
+      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+    }
+
+    function exportToText() {
+      const text = document.getElementById("result").textContent;
+      const blob = new Blob([text], { type: "text/plain" });
+      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+    }
+
+    function applyEnhancement() {
+      const enhancement = document.getElementById("enhance").value.trim();
+      if (!enhancement) return alert("Please enter an enhancement.");
+      const original = document.getElementById("result").textContent;
+      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+
+      fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: newPrompt })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const updated = data.result || original;
+        document.getElementById("result").textContent = updated;
+        document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
+        document.getElementById("enhance").value = "";
+        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
     function clearAll() {
       const fields = [
         "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
-        "garages", "interior", "lot", "notes", "enhance"
+        "garages", "interior", "lot", "notes", "agent", "enhance"
       ];
       fields.forEach(id => document.getElementById(id).value = "");
       document.getElementById("result").textContent = "";
@@ -306,7 +303,6 @@
       document.getElementById("output-container").style.display = 'none';
     }
 
-    // Preview logo and save base64
     document.getElementById("logoFile").addEventListener("change", function () {
       const preview = document.getElementById("logo-preview");
       preview.innerHTML = "";
@@ -350,6 +346,8 @@
         reader.onload = function (e) {
           const img = new Image();
           img.src = e.target.result;
+          img.style.maxHeight = "100px";
+          img.style.marginRight = "8px";
           preview.appendChild(img);
         };
         reader.readAsDataURL(file);

@@ -67,7 +67,8 @@
       font-size: 13px;
       color: #555;
     }
-    #image-preview img {
+    #image-preview img,
+    #logo-preview img {
       max-height: 100px;
       margin-right: 10px;
       border-radius: 6px;
@@ -122,10 +123,11 @@
     <label>Agency/Agent Details</label>
     <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
 
-    <label>Logo Image URL (Optional)</label>
-    <input type="text" id="logo" placeholder="e.g. https://example.com/logo.png" />
+    <label>Upload Logo Image (Max 2MB)</label>
+    <input type="file" id="logoFile" accept="image/*" />
+    <div id="logo-preview"></div>
 
-    <label>Upload Property Images (Max 3, 1MB each)</label>
+    <label>Upload Property Images (Max 3, 2MB each)</label>
     <input type="file" id="images" multiple accept="image/*" />
     <div id="image-preview"></div>
 
@@ -145,13 +147,15 @@
       </div>
 
       <label>Enhance or Correct Listing (Optional)</label>
-      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden, or request a version under 600 characters..."></textarea>
+      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
       <button onclick="applyEnhancement()">Apply Enhancement</button>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    let logoImageBase64 = "";
+
     function getTimestampFilename(base, extension) {
       const now = new Date();
       const timestamp = now.toISOString().replace(/[:.]/g, '-');
@@ -170,7 +174,6 @@
       const lot = document.getElementById("lot").value;
       const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
       const agent = document.getElementById("agent").value.trim();
-      const logo = document.getElementById("logo").value.trim();
 
       if (!type || !status || !location) {
         alert("Please fill in at least type, status, and location.");
@@ -182,8 +185,7 @@
         It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
         Living space: ${interior} m². Lot size: ${lot} m².
         Additional features: ${notes}.
-        Agent: ${agent}.
-        ${logo ? `Logo: ${logo}` : ''}`;
+        Agent: ${agent}.`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -234,14 +236,28 @@
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text })
-      })
-      .then(res => res.blob())
-      .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
-      .catch(err => alert("❌ " + err.message));
+      const logoInput = document.getElementById("logoFile");
+
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          sendToWord(text, reader.result);
+        };
+        reader.readAsDataURL(logoInput.files[0]);
+      } else {
+        sendToWord(text, "");
+      }
+
+      function sendToWord(content, logo) {
+        fetch("/export-word", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, logo })
+        })
+        .then(res => res.blob())
+        .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
+        .catch(err => alert("❌ " + err.message));
+      }
     }
 
     function exportToPDF() {
@@ -249,8 +265,16 @@
       const raw = document.getElementById("result").textContent;
       const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
       const doc = new jsPDF();
+
+      let y = 20;
+      if (logoImageBase64) {
+        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
+        y = 35;
+      }
+
       const lines = doc.splitTextToSize(stripped, 180);
-      doc.text(lines, 15, 20);
+      doc.text(lines, 15, y);
+
       const pdfBlob = new Blob([doc.output("arraybuffer")], {
         type: "application/octet-stream"
       });
@@ -282,20 +306,28 @@
       document.getElementById("output-container").style.display = 'none';
     }
 
-    // Retain agent and logo details
-    window.addEventListener("DOMContentLoaded", () => {
-      const savedAgent = localStorage.getItem("agentInfo");
-      const savedLogo = localStorage.getItem("logoURL");
-      if (savedAgent) document.getElementById("agent").value = savedAgent;
-      if (savedLogo) document.getElementById("logo").value = savedLogo;
-    });
-
-    document.getElementById("agent").addEventListener("input", () => {
-      localStorage.setItem("agentInfo", document.getElementById("agent").value);
-    });
-
-    document.getElementById("logo").addEventListener("input", () => {
-      localStorage.setItem("logoURL", document.getElementById("logo").value);
+    // Preview logo and save base64
+    document.getElementById("logoFile").addEventListener("change", function () {
+      const preview = document.getElementById("logo-preview");
+      preview.innerHTML = "";
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`${file.name} exceeds 2MB limit.`);
+        this.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.style.maxHeight = "60px";
+        img.style.marginBottom = "8px";
+        img.style.borderRadius = "4px";
+        preview.appendChild(img);
+        logoImageBase64 = e.target.result;
+      };
+      reader.readAsDataURL(file);
     });
 
     document.getElementById("images").addEventListener("change", function () {
@@ -308,8 +340,8 @@
         return;
       }
       files.forEach(file => {
-        if (file.size > 1 * 1024 * 1024) {
-          alert(`${file.name} exceeds 1MB limit.`);
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`${file.name} exceeds 2MB limit.`);
           this.value = "";
           preview.innerHTML = "";
           return;

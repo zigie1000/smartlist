@@ -118,6 +118,12 @@
     <label>Additional Features / Notes</label>
     <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
 
+    <label>Agency/Agent Details</label>
+    <textarea id="agent" placeholder="e.g. John Doe, Property Co, johndoe@propertyco.com, +27 71 234 5678..."></textarea>
+
+    <label>Logo Image URL (Optional)</label>
+    <input type="url" id="logo" placeholder="e.g. https://example.com/logo.png" />
+
     <button onclick="generate()">Generate</button>
 
     <div id="output-container">
@@ -139,136 +145,137 @@
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    function getTimestampFilename(base, extension) {
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/[:.]/g, '-');
-      return `${base}_${timestamp}.${extension}`;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  function getTimestampFilename(base, extension) {
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-');
+    return `${base}_${timestamp}.${extension}`;
+  }
+
+  async function generate() {
+    const type = document.getElementById("type").value;
+    const status = document.getElementById("status").value;
+    const location = document.getElementById("location").value.trim();
+    const bedrooms = document.getElementById("bedrooms").value;
+    const bathrooms = document.getElementById("bathrooms").value;
+    const ensuites = document.getElementById("ensuites").value;
+    const garages = document.getElementById("garages").value;
+    const interior = document.getElementById("interior").value;
+    const lot = document.getElementById("lot").value;
+    const notes = document.getElementById("notes").value.trim();
+    const agent = document.getElementById("agent").value.trim();
+    const logo = document.getElementById("logo").value.trim();
+
+    if (!type || !status || !location) {
+      alert("Please fill in at least type, status, and location.");
+      return;
     }
 
-    async function generate() {
-      const type = document.getElementById("type").value;
-      const status = document.getElementById("status").value;
-      const location = document.getElementById("location").value.trim();
-      const bedrooms = document.getElementById("bedrooms").value;
-      const bathrooms = document.getElementById("bathrooms").value;
-      const ensuites = document.getElementById("ensuites").value;
-      const garages = document.getElementById("garages").value;
-      const interior = document.getElementById("interior").value;
-      const lot = document.getElementById("lot").value;
-      const notes = document.getElementById("notes").value.trim();
+    const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}.
+      It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
+      Living space: ${interior} m². Lot size (erf): ${lot} m². Additional features include: ${notes}.
+      Agent Info: ${agent}. Logo: ${logo}`;
 
-      if (!type || !status || !location) {
-        alert("Please fill in at least type, status, and location.");
-        return;
-      }
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
 
-      const prompt = `Create a professional real estate listing for a ${type} ${status.toLowerCase()} in ${location}.
-        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
-        Living space: ${interior} m². Lot size (erf): ${lot} m². Additional features include: ${notes}`;
+    const data = await res.json();
+    const output = data.result || "Something went wrong.";
+    document.getElementById("result").textContent = output;
+    document.getElementById("char-count").textContent = `Character count: ${output.length}`;
+    document.getElementById("output-container").style.display = 'block';
+    document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+  }
 
-      const res = await fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
-      });
+  function applyEnhancement() {
+    const enhancement = document.getElementById("enhance").value.trim();
+    if (!enhancement) return alert("Please enter an enhancement.");
+    const original = document.getElementById("result").textContent;
+    const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
 
-      const data = await res.json();
-      const output = data.result || "Something went wrong.";
-      document.getElementById("result").textContent = output;
-      document.getElementById("char-count").textContent = `Character count: ${output.length}`;
-      document.getElementById("output-container").style.display = 'block';
+    fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: newPrompt })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const updated = data.result || original;
+      document.getElementById("result").textContent = updated;
+      document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
+      document.getElementById("enhance").value = "";
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
-    }
+    });
+  }
 
-    function applyEnhancement() {
-      const enhancement = document.getElementById("enhance").value.trim();
-      if (!enhancement) return alert("Please enter an enhancement.");
-      const original = document.getElementById("result").textContent;
-      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+  function copyToClipboard() {
+    const text = document.getElementById("result").textContent;
+    navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+  }
 
-      fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: newPrompt })
-      })
-      .then(res => res.json())
-      .then(data => {
-        const updated = data.result || original;
-        document.getElementById("result").textContent = updated;
-        document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
-        document.getElementById("enhance").value = "";
-        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
-      });
-    }
+  function exportToText() {
+    const text = document.getElementById("result").textContent;
+    const blob = new Blob([text], { type: "text/plain" });
+    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+  }
 
-    function copyToClipboard() {
-      const text = document.getElementById("result").textContent;
-      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
-    }
+  function exportToWord() {
+    const text = document.getElementById("result").textContent;
+    fetch("/export-word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: text })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to export DOCX.");
+      return res.blob();
+    })
+    .then(blob => {
+      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
+    })
+    .catch(err => alert("❌ " + err.message));
+  }
 
-    function exportToText() {
-      const text = document.getElementById("result").textContent;
-      const blob = new Blob([text], { type: "text/plain" });
-      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
-    }
+  function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const text = document.getElementById("result").textContent;
+    const lines = doc.splitTextToSize(text, 180);
+    doc.text(lines, 15, 20);
+    const pdfBlob = new Blob([doc.output("arraybuffer")], {
+      type: "application/octet-stream"
+    });
+    triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+  }
 
-    function exportToWord() {
-      const text = document.getElementById("result").textContent;
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    a.rel = "noopener";
+    a.target = "_self";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text })
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to export DOCX.");
-        return res.blob();
-      })
-      .then(blob => {
-        triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
-      })
-      .catch(err => alert("❌ " + err.message));
-    }
-
-    function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const text = document.getElementById("result").textContent;
-      const lines = doc.splitTextToSize(text, 180);
-      doc.text(lines, 15, 20);
-      const pdfBlob = new Blob([doc.output("arraybuffer")], {
-        type: "application/octet-stream"
-      });
-
-      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-    }
-
-    function triggerDownload(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      a.rel = "noopener";
-      a.target = "_self";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    function clearAll() {
-      const fields = [
-        "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
-        "garages", "interior", "lot", "notes", "enhance"
-      ];
-      fields.forEach(id => document.getElementById(id).value = "");
-      document.getElementById("result").textContent = "";
-      document.getElementById("char-count").textContent = "";
-      document.getElementById("output-container").style.display = 'none';
-    }
-  </script>
+  function clearAll() {
+    const fields = [
+      "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
+      "garages", "interior", "lot", "notes", "enhance", "agent", "logo"
+    ];
+    fields.forEach(id => document.getElementById(id).value = "");
+    document.getElementById("result").textContent = "";
+    document.getElementById("char-count").textContent = "";
+    document.getElementById("output-container").style.display = 'none';
+  }
+</script>
 </body>
 </html>

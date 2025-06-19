@@ -163,7 +163,8 @@
       document.getElementById("result").textContent = output;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("export-buttons").style.display = 'block';
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("enhance").value = "";
+      document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
     }
 
     function applyEnhancement() {
@@ -181,8 +182,8 @@
       .then(res => res.json())
       .then(data => {
         document.getElementById("result").textContent = data.result || original;
-        document.getElementById("enhance").value = ""; // ✅ Clears enhancement box
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        document.getElementById("enhance").value = "";
+        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
       });
     }
 

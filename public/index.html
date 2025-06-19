@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>PromptAgentHQ | Real Estate Listing Generator</title>
+  <title>🏡 PromptAgentHQ | Real Estate Listing Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -73,13 +73,17 @@
       margin-right: 10px;
       border-radius: 6px;
     }
+    #listing-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
 
-    <!-- INPUTS -->
     <label>Listing Type</label>
     <select id="type">
       <option value="">Select Type</option>
@@ -119,7 +123,7 @@
     <input type="number" id="lot" min="0" placeholder="e.g. 500" />
 
     <label>Additional Features / Notes</label>
-    <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
+    <textarea id="notes" placeholder="e.g. 🌊 Ocean views, 🏊 pool, 🌳 garden..."></textarea>
 
     <label>Agency/Agent Details</label>
     <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
@@ -132,92 +136,38 @@
     <input type="file" id="images" multiple accept="image/*" />
     <div id="image-preview"></div>
 
-    <button onclick="generate()">Generate</button>
+    <button onclick="generate()">✨ Generate</button>
 
-    <!-- OUTPUT -->
     <div id="output-container">
-      <h3>Generated Listing:</h3>
+      <h3 id="listing-title"></h3>
       <div id="result"></div>
       <div id="char-count"></div>
 
       <div id="export-buttons">
-        <button onclick="copyToClipboard()">Copy</button>
-        <button onclick="exportToWord()">Export Word</button>
-        <button onclick="exportToPDF()">Export PDF</button>
-        <button onclick="exportToText()">Export Text</button>
-        <button onclick="clearAll()">Clear</button>
+        <button onclick="copyToClipboard()">📋 Copy</button>
+        <button onclick="exportToWord()">📝 Export Word</button>
+        <button onclick="exportToPDF()">📄 Export PDF</button>
+        <button onclick="exportToText()">📁 Export Text</button>
+        <button onclick="clearAll()">🧹 Clear</button>
       </div>
 
       <label>Enhance or Correct Listing (Optional)</label>
       <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
-      <button onclick="applyEnhancement()">Apply Enhancement</button>
+      <button onclick="applyEnhancement()">💡 Apply Enhancement</button>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     let logoImageBase64 = "";
-    let propertyImages = [];
 
-    document.getElementById("logoFile").addEventListener("change", function () {
-      const preview = document.getElementById("logo-preview");
-      preview.innerHTML = "";
-      const file = this.files[0];
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        alert(`${file.name} exceeds 2MB limit.`);
-        this.value = "";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const img = new Image();
-        img.src = e.target.result;
-        img.style.maxHeight = "60px";
-        img.style.borderRadius = "4px";
-        preview.appendChild(img);
-        logoImageBase64 = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-
-    document.getElementById("images").addEventListener("change", function () {
-      const preview = document.getElementById("image-preview");
-      preview.innerHTML = "";
-      propertyImages = [];
-
-      const files = Array.from(this.files);
-      if (files.length > 3) {
-        alert("Maximum 3 images allowed.");
-        this.value = "";
-        return;
-      }
-
-      files.forEach(file => {
-        if (file.size > 2 * 1024 * 1024) {
-          alert(`${file.name} exceeds 2MB limit.`);
-          this.value = "";
-          preview.innerHTML = "";
-          propertyImages = [];
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const img = new Image();
-          img.src = e.target.result;
-          img.style.maxHeight = "60px";
-          img.style.marginRight = "6px";
-          img.style.borderRadius = "4px";
-          preview.appendChild(img);
-          propertyImages.push(e.target.result);
-        };
-        reader.readAsDataURL(file);
-      });
-    });
+    function getTimestampFilename(base, extension) {
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-');
+      return `${base}_${timestamp}.${extension}`;
+    }
 
     async function generate() {
-      // unchanged logic (kept stable)
       const type = document.getElementById("type").value;
       const status = document.getElementById("status").value;
       const location = document.getElementById("location").value.trim();
@@ -227,7 +177,7 @@
       const garages = document.getElementById("garages").value;
       const interior = document.getElementById("interior").value;
       const lot = document.getElementById("lot").value;
-      const notes = document.getElementById("notes").value.trim();
+      const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
       const agent = document.getElementById("agent").value.trim();
 
       if (!type || !status || !location) {
@@ -235,12 +185,14 @@
         return;
       }
 
-      const title = `${type} ${status.toLowerCase()} in ${location}`;
-      const prompt = `Create a professional real estate listing for a ${title}.
-        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
-        Living space: ${interior} m². Lot size: ${lot} m².
-        Additional features: ${notes}.
-        Agent: ${agent}.`;
+      const titleText = `🏡 ${type} ${status.toLowerCase()} in ${location}`;
+      document.getElementById("listing-title").textContent = titleText;
+
+      const prompt = `Create a professional real estate listing for a ${titleText}.
+        🛏 ${bedrooms} bedrooms, 🚿 ${bathrooms} bathrooms (${ensuites} ensuite), 🚗 ${garages} garages.
+        🏠 Living space: ${interior} m². 🌾 Lot size: ${lot} m².
+        ✨ Features: ${notes}.
+        👤 Agent: ${agent}.`;
 
       const res = await fetch("/generate", {
         method: "POST",
@@ -256,57 +208,9 @@
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
     }
 
-    function copyToClipboard() {
-      const text = document.getElementById("result").textContent;
-      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
-    }
-
-    function exportToText() {
-      const text = document.getElementById("result").textContent;
-      const blob = new Blob([text], { type: "text/plain" });
-      triggerDownload(blob, "PromptAgentHQ_Listing.txt");
-    }
-
-    function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      let y = 20;
-
-      if (logoImageBase64) {
-        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
-        y = 35;
-      }
-
-      const lines = doc.splitTextToSize(document.getElementById("result").textContent, 180);
-      doc.text(lines, 15, y);
-      y += lines.length * 8;
-
-      propertyImages.forEach((imgData, i) => {
-        if (i > 0) doc.addPage();
-        doc.addImage(imgData, 'JPEG', 15, 20, 180, 135);
-      });
-
-      doc.save("PromptAgentHQ_Listing.pdf");
-    }
-
-    function exportToWord() {
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: document.getElementById("result").textContent,
-          logo: logoImageBase64,
-          images: propertyImages
-        })
-      })
-      .then(res => res.blob())
-      .then(blob => triggerDownload(blob, "PromptAgentHQ_Listing.docx"))
-      .catch(err => alert("❌ " + err.message));
-    }
-
     function applyEnhancement() {
       const enhancement = document.getElementById("enhance").value.trim();
-      if (!enhancement) return;
+      if (!enhancement) return alert("Please enter an enhancement.");
       const original = document.getElementById("result").textContent;
       const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
 
@@ -321,21 +225,75 @@
         document.getElementById("result").textContent = updated;
         document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
         document.getElementById("enhance").value = "";
+        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
       });
     }
 
-    function clearAll() {
-      ["type", "status", "location", "bedrooms", "bathrooms", "ensuites", "garages", "interior", "lot", "notes", "agent", "enhance"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = "";
+    function copyToClipboard() {
+      const text = document.getElementById("result").textContent;
+      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+    }
+
+    function exportToText() {
+      const text = document.getElementById("result").textContent;
+      const blob = new Blob([text], { type: "text/plain" });
+      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+    }
+
+    function exportToWord() {
+      const content = document.getElementById("result").textContent;
+      const logoInput = document.getElementById("logoFile");
+      const imagesInput = document.getElementById("images");
+
+      const imageList = [];
+
+      if (imagesInput && imagesInput.files.length > 0) {
+        const promises = Array.from(imagesInput.files).map(file => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        });
+
+        Promise.all(promises).then(imageBase64Array => {
+          sendToWord(content, logoImageBase64, imageBase64Array);
+        });
+      } else {
+        sendToWord(content, logoImageBase64, []);
+      }
+
+      function sendToWord(content, logo, images) {
+        fetch("/export-word", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, logo, images })
+        })
+        .then(res => res.blob())
+        .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
+        .catch(err => alert("❌ " + err.message));
+      }
+    }
+
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const raw = document.getElementById("result").textContent;
+      const doc = new jsPDF();
+      let y = 20;
+
+      if (logoImageBase64) {
+        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
+        y = 35;
+      }
+
+      const lines = doc.splitTextToSize(raw, 180);
+      doc.text(lines, 15, y);
+
+      const pdfBlob = new Blob([doc.output("arraybuffer")], {
+        type: "application/octet-stream"
       });
-      document.getElementById("result").textContent = "";
-      document.getElementById("char-count").textContent = "";
-      document.getElementById("output-container").style.display = "none";
-      document.getElementById("image-preview").innerHTML = "";
-      document.getElementById("logo-preview").innerHTML = "";
-      propertyImages = [];
-      logoImageBase64 = "";
+      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
     }
 
     function triggerDownload(blob, filename) {
@@ -343,11 +301,72 @@
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
+      a.style.display = 'none';
+      a.rel = "noopener";
+      a.target = "_self";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
+
+    function clearAll() {
+      const fields = [
+        "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
+        "garages", "interior", "lot", "notes", "enhance"
+      ];
+      fields.forEach(id => document.getElementById(id).value = "");
+      document.getElementById("result").textContent = "";
+      document.getElementById("char-count").textContent = "";
+      document.getElementById("listing-title").textContent = "";
+      document.getElementById("output-container").style.display = 'none';
+    }
+
+    document.getElementById("logoFile").addEventListener("change", function () {
+      const preview = document.getElementById("logo-preview");
+      preview.innerHTML = "";
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`${file.name} exceeds 2MB limit.`);
+        this.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.src = e.target.result;
+        preview.appendChild(img);
+        logoImageBase64 = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById("images").addEventListener("change", function () {
+      const preview = document.getElementById("image-preview");
+      preview.innerHTML = "";
+      const files = Array.from(this.files);
+      if (files.length > 3) {
+        alert("Maximum 3 images allowed.");
+        this.value = "";
+        return;
+      }
+      files.forEach(file => {
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`${file.name} exceeds 2MB limit.`);
+          this.value = "";
+          preview.innerHTML = "";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = new Image();
+          img.src = e.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
   </script>
 </body>
 </html>

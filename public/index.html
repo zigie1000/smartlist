@@ -65,7 +65,7 @@
     <textarea id="prompt" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
     <br />
     <button onclick="generate()">Generate</button>
-    <button onclick="clearForm()">Clear</button>
+    <button onclick="clearOutput()">Clear</button>
 
     <div id="output-container">
       <h3>Generated Listing:</h3>
@@ -96,6 +96,22 @@
       document.getElementById("result").textContent = output;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("export-buttons").style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function clearOutput() {
+      document.getElementById("prompt").value = '';
+      document.getElementById("result").textContent = '';
+      document.getElementById("output-container").style.display = 'none';
+      document.getElementById("export-buttons").style.display = 'none';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getTimestampedFilename(base, ext) {
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const timestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      return `${base}_${timestamp}.${ext}`;
     }
 
     function copyToClipboard() {
@@ -106,7 +122,7 @@
     function exportToText() {
       const text = document.getElementById("result").textContent;
       const blob = new Blob([text], { type: "text/plain" });
-      triggerDownload(blob, "PromptAgentHQ_Listing.txt");
+      triggerDownload(blob, getTimestampedFilename("PromptAgentHQ_Listing", "txt"));
     }
 
     function exportToWord() {
@@ -122,7 +138,7 @@
         return res.blob();
       })
       .then(blob => {
-        triggerDownload(blob, "PromptAgentHQ_Listing.docx");
+        triggerDownload(blob, getTimestampedFilename("PromptAgentHQ_Listing", "docx"));
       })
       .catch(err => alert("❌ " + err.message));
     }
@@ -133,8 +149,9 @@
       const doc = new jsPDF();
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const pdfBlob = doc.output("blob");
-      triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
+      const blob = doc.output("blob");
+
+      triggerDownload(blob, getTimestampedFilename("PromptAgentHQ_Listing", "pdf"));
     }
 
     function triggerDownload(blob, filename) {
@@ -149,14 +166,6 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }
-
-    function clearForm() {
-      document.getElementById("prompt").value = "";
-      document.getElementById("result").textContent = "";
-      document.getElementById("output-container").style.display = 'none';
-      document.getElementById("export-buttons").style.display = 'none';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   </script>
 </body>

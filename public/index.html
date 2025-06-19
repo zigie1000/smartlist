@@ -122,8 +122,9 @@
     <label>Agency/Agent Details</label>
     <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
 
-    <label>Logo Image URL (Optional)</label>
-    <input type="text" id="logo" placeholder="e.g. https://example.com/logo.png" />
+    <label>Upload Logo Image (Max 2MB)</label>
+    <input type="file" id="logoFile" accept="image/*" />
+    <div id="logo-preview"></div>
 
     <label>Upload Property Images (Max 3, 2MB each)</label>
     <input type="file" id="images" multiple accept="image/*" />
@@ -152,6 +153,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    let logoImageBase64 = ""; // 🟩 Holds the base64 data for the agent logo image
     function getTimestampFilename(base, extension) {
       const now = new Date();
       const timestamp = now.toISOString().replace(/[:.]/g, '-');
@@ -232,31 +234,54 @@
       triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
     }
 
-    function exportToWord() {
-      const text = document.getElementById("result").textContent;
-      fetch("/export-word", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text })
-      })
-      .then(res => res.blob())
-      .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
-      .catch(err => alert("❌ " + err.message));
-    }
+function exportToWord() {
+  const text = document.getElementById("result").textContent;
+  const logoInput = document.getElementById("logoFile");
+  let logoImageBase64 = "";
 
+  if (logoInput && logoInput.files && logoInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      logoImageBase64 = reader.result;
+      sendToWord(text, logoImageBase64);
+    };
+    reader.readAsDataURL(logoInput.files[0]);
+  } else {
+    sendToWord(text, "");
+  }
+
+  function sendToWord(content, logo) {
+    fetch("/export-word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, logo })
+    })
+    .then(res => res.blob())
+    .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
+    .catch(err => alert("❌ " + err.message));
+  }
+}
+    }
     function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const raw = document.getElementById("result").textContent;
-      const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
-      const doc = new jsPDF();
-      const lines = doc.splitTextToSize(stripped, 180);
-      doc.text(lines, 15, 20);
-      const pdfBlob = new Blob([doc.output("arraybuffer")], {
-        type: "application/octet-stream"
-      });
-      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-    }
+  const { jsPDF } = window.jspdf;
+  const raw = document.getElementById("result").textContent;
+  const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+  const doc = new jsPDF();
 
+  let y = 20;
+  if (logoImageBase64) {
+    doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20); // Logo at top left
+    y = 35;
+  }
+
+  const lines = doc.splitTextToSize(stripped, 180);
+  doc.text(lines, 15, y);
+
+  const pdfBlob = new Blob([doc.output("arraybuffer")], {
+    type: "application/octet-stream"
+  });
+  triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+}
     function triggerDownload(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -297,7 +322,54 @@
     document.getElementById("logo").addEventListener("input", () => {
       localStorage.setItem("logoURL", document.getElementById("logo").value);
     });
+    // Logo image upload preview logic
+document.getElementById("logoFile").addEventListener("change", function () {
+  const preview = document.getElementById("logo-preview");
+  preview.innerHTML = "";
+  const file = this.files[0];
 
+  if (!file) return;
+
+  if (file.size > 2 * 1024 * 1024) {
+    alert(`${file.name} exceeds 2MB limit.`);
+    this.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const img = new Image();
+    img.src = e.target.result;
+    img.style.maxHeight = "60px"; // ✅ Aesthetic fit for professional layout
+    img.style.marginBottom = "8px";
+    img.style.borderRadius = "4px";
+    preview.appendChild(img);
+  };
+  reader.readAsDataURL(file);
+});
+    // Logo image upload preview logic
+document.getElementById("logoFile").addEventListener("change", function () {
+  const preview = document.getElementById("logo-preview");
+  preview.innerHTML = "";
+  const file = this.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert(`${file.name} exceeds 2MB limit.`);
+    this.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const img = new Image();
+    img.src = e.target.result;
+    img.style.maxHeight = "60px"; // ✅ Aesthetic fit
+    img.style.marginBottom = "8px";
+    img.style.borderRadius = "4px";
+    preview.appendChild(img);
+    logoImageBase64 = e.target.result; // ✅ Save base64 for PDF
+  };
+  reader.readAsDataURL(file);
+});
     // Image upload logic
     document.getElementById("images").addEventListener("change", function () {
       const preview = document.getElementById("image-preview");

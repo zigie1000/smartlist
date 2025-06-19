@@ -125,7 +125,7 @@
     <label>Logo Image URL (Optional)</label>
     <input type="text" id="logo" placeholder="e.g. https://example.com/logo.png" />
 
-    <label>Upload Property Images (Max 3, 1MB each)</label>
+    <label>Upload Property Images (Max 3, 2MB each)</label>
     <input type="file" id="images" multiple accept="image/*" />
     <div id="image-preview"></div>
 
@@ -145,7 +145,7 @@
       </div>
 
       <label>Enhance or Correct Listing (Optional)</label>
-      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden, or request a version under 600 characters..."></textarea>
+      <textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
       <button onclick="applyEnhancement()">Apply Enhancement</button>
     </div>
   </div>
@@ -298,6 +298,7 @@
       localStorage.setItem("logoURL", document.getElementById("logo").value);
     });
 
+    // Image upload logic
     document.getElementById("images").addEventListener("change", function () {
       const preview = document.getElementById("image-preview");
       preview.innerHTML = "";
@@ -308,8 +309,8 @@
         return;
       }
       files.forEach(file => {
-        if (file.size > 1 * 1024 * 1024) {
-          alert(`${file.name} exceeds 1MB limit.`);
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`${file.name} exceeds 2MB limit.`);
           this.value = "";
           preview.innerHTML = "";
           return;

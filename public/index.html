@@ -242,7 +242,8 @@
     function exportToPDF() {
       const { jsPDF } = window.jspdf;
       const text = document.getElementById("result").textContent;
-      const stripped = text.replace(/[\u{1F600}-\u{1F6FF}]/gu, ''); // Emojis removed for PDF only
+      const raw = document.getElementById("result").textContent;
+      const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
       const doc = new jsPDF();
       const lines = doc.splitTextToSize(stripped, 180);
       doc.text(lines, 15, 20);

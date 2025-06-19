@@ -241,7 +241,6 @@
 
     function exportToPDF() {
       const { jsPDF } = window.jspdf;
-      const text = document.getElementById("result").textContent;
       const raw = document.getElementById("result").textContent;
       const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
       const doc = new jsPDF();
@@ -270,13 +269,29 @@
     function clearAll() {
       const fields = [
         "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
-        "garages", "interior", "lot", "notes", "enhance", "agent", "logo"
+        "garages", "interior", "lot", "notes", "enhance"
       ];
       fields.forEach(id => document.getElementById(id).value = "");
       document.getElementById("result").textContent = "";
       document.getElementById("char-count").textContent = "";
       document.getElementById("output-container").style.display = 'none';
     }
+
+    // Retain agent and logo details
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedAgent = localStorage.getItem("agentInfo");
+      const savedLogo = localStorage.getItem("logoURL");
+      if (savedAgent) document.getElementById("agent").value = savedAgent;
+      if (savedLogo) document.getElementById("logo").value = savedLogo;
+    });
+
+    document.getElementById("agent").addEventListener("input", () => {
+      localStorage.setItem("agentInfo", document.getElementById("agent").value);
+    });
+
+    document.getElementById("logo").addEventListener("input", () => {
+      localStorage.setItem("logoURL", document.getElementById("logo").value);
+    });
   </script>
 </body>
 </html>

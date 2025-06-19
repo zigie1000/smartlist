@@ -80,6 +80,12 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    function getTimestampFilename(base, extension) {
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-');
+      return `${base}_${timestamp}.${extension}`;
+    }
+
     async function generate() {
       const prompt = document.getElementById("prompt").value.trim();
       if (!prompt) return alert("Please enter property details.");
@@ -95,6 +101,10 @@
       document.getElementById("result").textContent = output;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("export-buttons").style.display = 'block';
+
+      // Auto-scroll + clear prompt
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("prompt").value = "";
     }
 
     function copyToClipboard() {
@@ -105,11 +115,12 @@
     function exportToText() {
       const text = document.getElementById("result").textContent;
       const blob = new Blob([text], { type: "text/plain" });
-      triggerDownload(blob, "PromptAgentHQ_Listing.txt");
+      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
     }
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
+
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,7 +131,7 @@
         return res.blob();
       })
       .then(blob => {
-        triggerDownload(blob, "PromptAgentHQ_Listing.docx");
+        triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
       })
       .catch(err => alert("❌ " + err.message));
     }
@@ -136,7 +147,7 @@
         type: "application/octet-stream"
       });
 
-      triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
+      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
     }
 
     function triggerDownload(blob, filename) {

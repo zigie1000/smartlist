@@ -20,9 +20,8 @@
       border-radius: 12px;
       box-shadow: 0 0 12px rgba(0,0,0,0.08);
     }
-    textarea {
+    textarea, select, input {
       width: 100%;
-      height: 120px;
       padding: 10px;
       font-size: 16px;
       margin-top: 10px;
@@ -61,9 +60,45 @@
 <body>
   <div class="container">
     <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
-    <p>Enter Property Details:</p>
-    <textarea id="prompt" placeholder="e.g. 3-bedroom house in Sea Point with ocean views, pool, etc."></textarea>
-    <br />
+
+    <label>Status:</label>
+    <select id="status">
+      <option value="For Sale">For Sale</option>
+      <option value="To Rent">To Rent</option>
+    </select>
+
+    <label>Property Type:</label>
+    <select id="type">
+      <option value="House">House</option>
+      <option value="Apartment">Apartment</option>
+      <option value="Townhouse">Townhouse</option>
+      <option value="Vacant Land">Vacant Land</option>
+      <option value="Commercial">Commercial</option>
+    </select>
+
+    <label>Number of Bedrooms:</label>
+    <input type="number" id="bedrooms" min="0" />
+
+    <label>Number of Bathrooms:</label>
+    <input type="number" id="bathrooms" min="0" />
+
+    <label>Number of Ensuites:</label>
+    <input type="number" id="ensuites" min="0" />
+
+    <label>Garages:</label>
+    <input type="number" id="garages" min="0" />
+
+    <label>Key Features:</label>
+    <textarea id="features" placeholder="e.g. Ocean views, pool, large garden, security system..."></textarea>
+
+    <label>Additional Notes:</label>
+    <textarea id="notes" placeholder="e.g. Close to schools, pets allowed..."></textarea>
+
+    <button onclick="buildPrompt()">Build Prompt</button>
+
+    <label>Final Prompt:</label>
+    <textarea id="prompt" placeholder="Prompt will be built above or entered here manually"></textarea>
+
     <button onclick="generate()">Generate</button>
 
     <div id="output-container">
@@ -85,6 +120,26 @@
       const now = new Date();
       const timestamp = now.toISOString().replace(/[:.]/g, '-');
       return `${base}_${timestamp}.${extension}`;
+    }
+
+    function buildPrompt() {
+      const status = document.getElementById("status").value;
+      const type = document.getElementById("type").value;
+      const bedrooms = document.getElementById("bedrooms").value;
+      const bathrooms = document.getElementById("bathrooms").value;
+      const ensuites = document.getElementById("ensuites").value;
+      const garages = document.getElementById("garages").value;
+      const features = document.getElementById("features").value.trim();
+      const notes = document.getElementById("notes").value.trim();
+
+      let prompt = `${status} ${bedrooms}-bedroom ${type}`;
+      if (bathrooms) prompt += ` with ${bathrooms} bathroom${bathrooms > 1 ? 's' : ''}`;
+      if (ensuites) prompt += ` (${ensuites} en-suite)`;
+      if (garages) prompt += ` and ${garages} garage${garages > 1 ? 's' : ''}`;
+      if (features) prompt += `. Features include: ${features}`;
+      if (notes) prompt += `. Notes: ${notes}`;
+
+      document.getElementById("prompt").value = prompt;
     }
 
     async function generate() {

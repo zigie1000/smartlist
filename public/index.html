@@ -80,12 +80,6 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    function getTimestampFilename(base, extension) {
-      const now = new Date();
-      const timestamp = now.toISOString().replace(/[:.]/g, '-');
-      return `${base}_${timestamp}.${extension}`;
-    }
-
     async function generate() {
       const prompt = document.getElementById("prompt").value.trim();
       if (!prompt) return alert("Please enter property details.");
@@ -111,12 +105,11 @@
     function exportToText() {
       const text = document.getElementById("result").textContent;
       const blob = new Blob([text], { type: "text/plain" });
-      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+      triggerDownload(blob, "PromptAgentHQ_Listing.txt");
     }
 
     function exportToWord() {
       const text = document.getElementById("result").textContent;
-
       fetch("/export-word", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,20 +120,23 @@
         return res.blob();
       })
       .then(blob => {
-        triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
+        triggerDownload(blob, "PromptAgentHQ_Listing.docx");
       })
       .catch(err => alert("❌ " + err.message));
     }
 
     function exportToPDF() {
-      const text = document.getElementById("result").textContent;
-      const jsPDF = window.jspdf.jsPDF; // ✅ Correct access for UMD module
+      const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
+      const text = document.getElementById("result").textContent;
       const lines = doc.splitTextToSize(text, 180);
       doc.text(lines, 15, 20);
-      const blob = doc.output("blob");
 
-      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+      const pdfBlob = new Blob([doc.output("arraybuffer")], {
+        type: "application/octet-stream"
+      });
+
+      triggerDownload(pdfBlob, "PromptAgentHQ_Listing.pdf");
     }
 
     function triggerDownload(blob, filename) {

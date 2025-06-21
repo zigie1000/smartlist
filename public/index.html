@@ -351,5 +351,24 @@ const title = `${type} ${status} in ${location}`;
   document.getElementById("output-container").style.display = 'block';
   document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
 }
-</script></body>
+</script><script>
+async function generate() {
+      const type = document.getElementById("type").value;
+      const status = document.getElementById("status").value;
+      const location = document.getElementById("location").value.trim();
+      const bedrooms = document.getElementById("bedrooms").value;
+      const bathrooms = document.getElementById("bathrooms").value;
+      const ensuites = document.getElementById("ensuites").value;
+      const garages = document.getElementById("garages").value;
+      const interior = document.getElementById("interior").value;
+      const lot = document.getElementById("lot").value;
+      const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
+      const agent = document.getElementById("agent").value.trim();
+
+      if (!type || !status || !location) {
+        alert("Please fill in at least type, status, and location.");
+        return;
+      }
+</script>
+</body>
 </html>

@@ -186,23 +186,17 @@
       const data = await res.json();
       const output = data.result || "Something went wrong.";
       
-        
-let bullets = '';
-
-if (type) bullets += `🏠 <strong>Type:</strong> ${type}<br>`;
-if (location) bullets += `📍 <strong>Location:</strong> ${location}<br>`;
-if (bedrooms) bullets += `🛏 <strong>Bedrooms:</strong> ${bedrooms}<br>`;
-if (bathrooms) bullets += `🚿 <strong>Bathrooms:</strong> ${bathrooms}`;
-if (ensuites) bullets += ` (🛁 ${ensuites} ensuite)`;
-if (bathrooms || ensuites) bullets += "<br>";
-if (garages) bullets += `🚗 <strong>Garages:</strong> ${garages}<br>`;
-if (interior) bullets += `📐 <strong>Living space:</strong> ${interior} m²<br>`;
-if (lot) bullets += `🌳 <strong>Lot size:</strong> ${lot} m²<br>`;
-if (notes) bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
-if (agent) bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
-
-const decorated = output + "<br><br>" + bullets;
-
+        const decorated = `
+        🏡 <strong>${title}</strong><br><br>
+        🏠 <strong>Type:</strong> ${type}<br>
+        📍 <strong>Location:</strong> ${location}<br>
+        🛏 <strong>Bedrooms:</strong> ${bedrooms}<br>
+        🚿 <strong>Bathrooms:</strong> ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}<br>
+        🚗 <strong>Garages:</strong> ${garages}<br>
+        📐 <strong>Living space:</strong> ${interior} m²<br>
+        🌳 <strong>Lot size:</strong> ${lot} m²<br>
+        ✨ <strong>Features:</strong> ${notes}<br>
+        🔑 <strong>Agent:</strong> ${agent}<br><br>` + output;
         document.getElementById("result").innerHTML = decorated;
         
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;

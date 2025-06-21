@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>PromptAgentHQ | Real Estate Listing Generator</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 40px 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 750px;
+    margin: auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.08);
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    margin-top: 5px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  textarea { height: 100px; }
+  button {
+    background: #4CAF50;
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin: 10px 8px 0 0;
+  }
+  button:hover { background: #45a049; }
+  #output-container {
+    display: none;
+    margin-top: 30px;
+    background: #f9f9f9;
+    border-left: 4px solid #4CAF50;
+    padding: 20px;
+    white-space: pre-wrap;
+    font-size: 15px;
+    border-radius: 6px;
+  }
+  #export-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  #char-count {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #555;
+  }
+  #image-preview img,
+  #logo-preview img {
+    max-height: 100px;
+    margin-right: 10px;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
+  <label>Listing Type</label>
+  <select id="type">
+    <option value="">Select Type</option>
+    <option value="Apartment">Apartment</option>
+    <option value="House">House</option>
+    <option value="Townhouse">Townhouse</option>
+    <option value="Penthouse">Penthouse</option>
+    <option value="Studio">Studio</option>
+  </select>
+  <label>Status</label>
+  <select id="status">
+    <option value="">Select Status</option>
+    <option value="For Sale">For Sale</option>
+    <option value="For Rent">For Rent</option>
+  </select>
+  <label>Location</label>
+  <input id="location" type="text" placeholder="e.g. Sea Point, Cape Town"/>
+  <label>Bedrooms</label>
+  <input id="bedrooms" type="number" min="0" placeholder="e.g. 3"/>
+  <label>Bathrooms</label>
+  <input id="bathrooms" type="number" min="0" placeholder="e.g. 2"/>
+  <label>Ensuite Bathrooms</label>
+  <input id="ensuites" type="number" min="0" placeholder="e.g. 1"/>
+  <label>Garages</label>
+  <input id="garages" type="number" min="0" placeholder="e.g. 2"/>
+  <label>Living Space Area (m²)</label>
+  <input id="interior" type="number" min="0" placeholder="e.g. 120"/>
+  <label>Lot Size / Erf Size (m²)</label>
+  <input id="lot" type="number" min="0" placeholder="e.g. 500"/>
+  <label>Additional Features / Notes</label>
+  <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
+  <label>Agency/Agent Details</label>
+  <textarea id="agent" placeholder="e.g. John Doe
+Example Realty
+0712345678
+john@example.com"></textarea>
+  <button onclick="generate()">Generate</button>
+  <div id="output-container">
+    <h3>Generated Listing:</h3>
+    <div id="result"></div>
+    <div id="char-count"></div>
+    <div id="export-buttons">
+      <button onclick="copyToClipboard()">Copy</button>
+    </div>
+  </div>
+</div>
+<script>
+function generate() {
+  const type = document.getElementById("type").value;
+  const status = document.getElementById("status").value;
+  const location = document.getElementById("location").value.trim();
+  const bedrooms = document.getElementById("bedrooms").value;
+  const bathrooms = document.getElementById("bathrooms").value;
+  const ensuites = document.getElementById("ensuites").value;
+  const garages = document.getElementById("garages").value;
+  const interior = document.getElementById("interior").value;
+  const lot = document.getElementById("lot").value;
+  const notes = document.getElementById("notes").value.trim();
+  const agent = document.getElementById("agent").value.trim();
+
+  if (!type || !status || !location) {
+    alert("Please fill in at least type, status, and location.");
+    return;
+  }
+
+  const title = `${type} ${status} in ${location}`;
+  let htmlOutput = `<h3>🏡 ${title} 🏡</h3>`;
+  htmlOutput += `<p>Located in the prestigious ${location}, this beautiful property offers a perfect blend of comfort and style.</p>`;
+  htmlOutput += `<h4>Property Features:</h4><ul style="list-style:none; padding-left:0;">`;
+  if (bedrooms) htmlOutput += `<li>🛏 ${bedrooms} Bedrooms</li>`;
+  if (bathrooms) htmlOutput += `<li>🚿 ${bathrooms} Bathrooms${ensuites ? ` (${ensuites} ensuite)` : ''}</li>`;
+  if (garages) htmlOutput += `<li>🚗 ${garages} Garages</li>`;
+  if (interior) htmlOutput += `<li>🏡 Living Space: ${interior} m²</li>`;
+  if (lot) htmlOutput += `<li>🌳 Lot Size: ${lot} m²</li>`;
+  htmlOutput += `</ul>`;
+  if (notes) htmlOutput += `<h4>Additional Features:</h4><p>✨ ${notes}</p>`;
+  if (agent) htmlOutput += `<h4>Agent Details:</h4><p>🔑 Listed by:<br>${agent.replaceAll('
+', '<br/>')}</p>`;
+
+  document.getElementById("result").innerHTML = htmlOutput;
+  document.getElementById("char-count").textContent = `Character count: ${htmlOutput.replace(/<[^>]*>/g, '').length}`;
+  document.getElementById("output-container").style.display = 'block';
+  document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+}
+</script>
+</body>
+</html>

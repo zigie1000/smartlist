@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>PromptAgentHQ | Real Estate Listing Generator</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 40px 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 750px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.08);
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    textarea { height: 100px; }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 10px 8px 0 0;
+    }
+    button:hover { background: #45a049; }
+    #output-container {
+      display: none;
+      margin-top: 30px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      padding: 20px;
+      white-space: pre-wrap;
+      font-size: 15px;
+      border-radius: 6px;
+    }
+    #export-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #char-count {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #555;
+    }
+    #image-preview img,
+    #logo-preview img {
+      max-height: 100px;
+      margin-right: 10px;
+      border-radius: 6px;
+    }
+  
+.export-images img {
+  display: block;
+  margin: 0 auto 10px;
+  max-width: 300px;
+  border-radius: 8px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
+<label>Listing Type</label>
+<select id="type">
+<option value="">Select Type</option>
+<option value="Apartment">Apartment</option>
+<option value="House">House</option>
+<option value="Townhouse">Townhouse</option>
+<option value="Penthouse">Penthouse</option>
+<option value="Studio">Studio</option>
+</select>
+<label>Status</label>
+<select id="status">
+<option value="">Select Status</option>
+<option value="For Sale">For Sale</option>
+<option value="For Rent">For Rent</option>
+</select>
+<label>Location</label>
+<input id="location" placeholder="e.g. Sea Point, Cape Town" type="text"/>
+<label>Bedrooms</label>
+<input id="bedrooms" min="0" placeholder="e.g. 3" type="number"/>
+<label>Bathrooms</label>
+<input id="bathrooms" min="0" placeholder="e.g. 2" type="number"/>
+<label>Ensuite Bathrooms</label>
+<input id="ensuites" min="0" placeholder="e.g. 1" type="number"/>
+<label>Garages</label>
+<input id="garages" min="0" placeholder="e.g. 2" type="number"/>
+<label>Living Space Area (m²)</label>
+<input id="interior" min="0" placeholder="e.g. 120" type="number"/>
+<label>Lot Size / Erf Size (m²)</label>
+<input id="lot" min="0" placeholder="e.g. 500" type="number"/>
+<label>Additional Features / Notes</label>
+<textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
+<label>Agency/Agent Details</label>
+<textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
+<label>Upload Logo Image (Max 2MB)</label>
+<input accept="image/*" id="logoFile" type="file"/>
+<div id="logo-preview"></div>
+<label>Upload Property Images (Max 3, 2MB each)</label>
+<input accept="image/*" id="images" multiple="" type="file"/>
+<div id="image-preview"></div>
+<button onclick="generate()">Generate</button>
+<div id="output-container">
+<h3>Generated Listing:</h3>
+<div id="result"></div>
+<div id="char-count"></div>
+<div id="export-buttons">
+<button onclick="copyToClipboard()">Copy</button>
+<button onclick="exportToWord()">Export Word</button>
+<button onclick="exportToPDF()">Export PDF</button>
+<button onclick="exportToText()">Export Text</button>
+<button onclick="clearAll()">Clear</button>
+</div>
+<label>Enhance or Correct Listing (Optional)</label>
+<textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
+<button onclick="applyEnhancement()">Apply Enhancement</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+    let logoImageBase64 = "";
+
+    function getTimestampFilename(base, extension) {
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-');
+      return `${base}_${timestamp}.${extension}`;
+    }
+
+    const title = `${type} ${status.toLowerCase()} in ${location}`;
+      const prompt = `Create a professional real estate listing for a ${title}.
+        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
+        Living space: ${interior} m². Lot size: ${lot} m².
+        Additional features: ${notes}.
+        Agent: ${agent}.`;
+
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await res.json();
+      const output = data.result || "Something went wrong.";
+      document.getElementById("result").textContent = output;
+      document.getElementById("char-count").textContent = `Character count: ${output.length}`;
+      document.getElementById("output-container").style.display = 'block';
+      document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function applyEnhancement() {
+      const enhancement = document.getElementById("enhance").value.trim();
+      if (!enhancement) return alert("Please enter an enhancement.");
+      const original = document.getElementById("result").textContent;
+      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+
+      fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: newPrompt })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const updated = data.result || original;
+        document.getElementById("result").textContent = updated;
+        document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
+        document.getElementById("enhance").value = "";
+        document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+      });
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById("result").textContent;
+      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+    }
+
+    function exportToText() {
+      const text = document.getElementById("result").textContent;
+      const cleaned = text.replace(/Logo:.*(\n)?/, '');
+      const blob = new Blob([cleaned], { type: "text/plain" });
+      triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+    }
+
+    function exportToWord() {
+      const text = document.getElementById("result").textContent;
+      const logoInput = document.getElementById("logoFile");
+
+      if (logoInput && logoInput.files && logoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          sendToWord(text, reader.result);
+        };
+        reader.readAsDataURL(logoInput.files[0]);
+      } else {
+        sendToWord(text, "");
+      }
+
+      function sendToWord(content, logo) {
+        fetch("/export-word", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, logo })
+        })
+        .then(res => res.blob())
+        .then(blob => triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx")))
+        .catch(err => alert("❌ " + err.message));
+      }
+    }
+
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const raw = document.getElementById("result").textContent;
+      const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+      const doc = new jsPDF();
+
+      let y = 20;
+      if (logoImageBase64) {
+        doc.addImage(logoImageBase64, 'PNG', 15, 10, 40, 20);
+        y = 35;
+      }
+
+      const lines = doc.splitTextToSize(stripped, 180);
+      doc.text(lines, 15, y);
+
+      const pdfBlob = new Blob([doc.output("arraybuffer")], {
+        type: "application/octet-stream"
+      });
+      triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      a.rel = "noopener";
+      a.target = "_self";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      const fields = [
+        "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
+        "garages", "interior", "lot", "notes", "enhance"
+      ];
+      fields.forEach(id => document.getElementById(id).value = "");
+      document.getElementById("result").textContent = "";
+      document.getElementById("char-count").textContent = "";
+      document.getElementById("output-container").style.display = 'none';
+    }
+
+    // Preview logo and save base64
+    document.getElementById("logoFile").addEventListener("change", function () {
+      const preview = document.getElementById("logo-preview");
+      preview.innerHTML = "";
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`${file.name} exceeds 2MB limit.`);
+        this.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.style.maxHeight = "60px";
+        img.style.marginBottom = "8px";
+        img.style.borderRadius = "4px";
+        preview.appendChild(img);
+        logoImageBase64 = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById("images").addEventListener("change", function () {
+      const preview = document.getElementById("image-preview");
+      preview.innerHTML = "";
+      const files = Array.from(this.files);
+      if (files.length > 3) {
+        alert("Maximum 3 images allowed.");
+        this.value = "";
+        return;
+      }
+      files.forEach(file => {
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`${file.name} exceeds 2MB limit.`);
+          this.value = "";
+          preview.innerHTML = "";
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const img = new Image();
+          img.src = e.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  </script>
+<script src="https://unpkg.com/html-docx-js/dist/html-docx.js">
+const title = `${type} ${status} in ${location}`;
+
+  let htmlOutput = `
+    <h3>🏡 ${title} 🏡</h3>
+    <p>Located in the prestigious ${location}, this beautiful property offers a perfect blend of comfort and style.</p>
+    <h4>Property Features:</h4>
+    <ul style="list-style:none; padding-left:0;">
+      ${bedrooms ? `<li>🛏 ${bedrooms} Bedrooms</li>` : ''}
+      ${bathrooms ? `<li>🚿 ${bathrooms} Bathrooms${ensuites ? ` (${ensuites} ensuite)` : ''}</li>` : ''}
+      ${garages ? `<li>🚗 ${garages} Garages</li>` : ''}
+      ${interior ? `<li>🏡 Living Space: ${interior} m²</li>` : ''}
+      ${lot ? `<li>🌳 Lot Size: ${lot} m²</li>` : ''}
+    </ul>
+    ${notes && !notes.toLowerCase().includes("list any") && !notes.includes("[") ? `<h4>Additional Features:</h4><p>✨ ${notes}</p>` : ''}
+    ${agent && !agent.includes('[Insert Agent') ? `<h4>Agent Details:</h4><p>🔑 Listed by:<br>${agent.replaceAll('\n', '<br/>').replace(/(\d{10,})/, '📞 $1').replace(/(\S+@\S+)/, '📧 $1')}</p>` : ''}
+  `;
+
+  document.getElementById("result").innerHTML = htmlOutput;
+  document.getElementById("char-count").textContent = `Character count: ${htmlOutput.replace(/<[^>]*>/g, '').length}`;
+  document.getElementById("output-container").style.display = 'block';
+  document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+}
+</script><script>
+async function generate() {
+      const type = document.getElementById("type").value;
+      const status = document.getElementById("status").value;
+      const location = document.getElementById("location").value.trim();
+      const bedrooms = document.getElementById("bedrooms").value;
+      const bathrooms = document.getElementById("bathrooms").value;
+      const ensuites = document.getElementById("ensuites").value;
+      const garages = document.getElementById("garages").value;
+      const interior = document.getElementById("interior").value;
+      const lot = document.getElementById("lot").value;
+      const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
+      const agent = document.getElementById("agent").value.trim();
+
+      if (!type || !status || !location) {
+        alert("Please fill in at least type, status, and location.");
+        return;
+      }
+</script>
+<script>
+
+async function generate() {
+    const type = document.getElementById("type").value;
+    const location = document.getElementById("location").value;
+    const bedrooms = document.getElementById("bedrooms").value;
+    const bathrooms = document.getElementById("bathrooms").value;
+    const ensuites = document.getElementById("ensuites").value;
+    const garages = document.getElementById("garages").value;
+    const interior = document.getElementById("interior").value;
+    const lot = document.getElementById("lot").value;
+    const notes = document.getElementById("notes").value;
+    const agent = document.getElementById("agent").value;
+    const status = document.getElementById("status").value;
+
+    const title = `${type} ${status.toLowerCase()} in ${location}`;
+    const prompt = `Create a professional real estate listing for a ${title}:
+🏠 Type: ${type}
+📍 Location: ${location}
+🛏 Bedrooms: ${bedrooms}
+🚿 Bathrooms: ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}
+🚗 Garages: ${garages}
+📐 Living space: ${interior} m²
+🌳 Lot size: ${lot} m²
+✨ Additional features: ${notes}
+🔑 Agent: ${agent}
+
+Use a friendly and professional tone. Format with emojis.`;
+
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const data = await res.json();
+    document.getElementById("result").innerHTML = data.text.replace(/
+/g, "<br>");
+    document.getElementById("result").scrollIntoView();
+}
+
+</script>
+</body>
+</html>

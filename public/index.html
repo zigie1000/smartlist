@@ -185,7 +185,20 @@
 
       const data = await res.json();
       const output = data.result || "Something went wrong.";
-      document.getElementById("result").textContent = output;
+      
+        const decorated = `
+        🏡 <strong>${title}</strong><br><br>
+        🏠 <strong>Type:</strong> ${type}<br>
+        📍 <strong>Location:</strong> ${location}<br>
+        🛏 <strong>Bedrooms:</strong> ${bedrooms}<br>
+        🚿 <strong>Bathrooms:</strong> ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}<br>
+        🚗 <strong>Garages:</strong> ${garages}<br>
+        📐 <strong>Living space:</strong> ${interior} m²<br>
+        🌳 <strong>Lot size:</strong> ${lot} m²<br>
+        ✨ <strong>Features:</strong> ${notes}<br>
+        🔑 <strong>Agent:</strong> ${agent}<br><br>` + output;
+        document.getElementById("result").innerHTML = decorated;
+        
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });

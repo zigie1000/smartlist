@@ -370,5 +370,47 @@ async function generate() {
         return;
       }
 </script>
+<script>
+
+async function generate() {
+    const type = document.getElementById("type").value;
+    const location = document.getElementById("location").value;
+    const bedrooms = document.getElementById("bedrooms").value;
+    const bathrooms = document.getElementById("bathrooms").value;
+    const ensuites = document.getElementById("ensuites").value;
+    const garages = document.getElementById("garages").value;
+    const interior = document.getElementById("interior").value;
+    const lot = document.getElementById("lot").value;
+    const notes = document.getElementById("notes").value;
+    const agent = document.getElementById("agent").value;
+    const status = document.getElementById("status").value;
+
+    const title = `${type} ${status.toLowerCase()} in ${location}`;
+    const prompt = `Create a professional real estate listing for a ${title}:
+🏠 Type: ${type}
+📍 Location: ${location}
+🛏 Bedrooms: ${bedrooms}
+🚿 Bathrooms: ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}
+🚗 Garages: ${garages}
+📐 Living space: ${interior} m²
+🌳 Lot size: ${lot} m²
+✨ Additional features: ${notes}
+🔑 Agent: ${agent}
+
+Use a friendly and professional tone. Format with emojis.`;
+
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const data = await res.json();
+    document.getElementById("result").innerHTML = data.text.replace(/
+/g, "<br>");
+    document.getElementById("result").scrollIntoView();
+}
+
+</script>
 </body>
 </html>

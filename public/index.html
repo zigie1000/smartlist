@@ -152,6 +152,7 @@
       return `${base}_${timestamp}.${extension}`;
     }
 
+    
     async function generate() {
       const type = document.getElementById("type").value;
       const status = document.getElementById("status").value;
@@ -169,6 +170,34 @@
         alert("Please fill in at least type, status, and location.");
         return;
       }
+
+      const title = `${type} ${status.toLowerCase()} in ${location}`;
+      const prompt = `Create a professional real estate listing for a ${title}:
+🏠 Type: ${type}
+📍 Location: ${location}
+🛏 Bedrooms: ${bedrooms}
+🚿 Bathrooms: ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}
+🚗 Garages: ${garages}
+📐 Living space: ${interior} m²
+🌳 Lot size: ${lot} m²
+✨ Additional features: ${notes}
+🔑 Agent: ${agent}
+
+Use a friendly and professional tone. Format with emojis.`;
+
+      const res = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await res.json();
+      const output = data.result || "Something went wrong.";
+      document.getElementById("result").innerHTML = `<pre style="font-size: 16px; line-height: 1.5;">${output}</pre>`;
+      document.getElementById("char-count").textContent = `Character count: ${output.length}`;
+      document.getElementById("output-container").style.display = 'block';
+      document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+    }
 
       const title = `${type} ${status.toLowerCase()} in ${location}`;
       const prompt = `Create a professional real estate listing for a ${title}.

@@ -192,11 +192,11 @@
         📍 <strong>Location:</strong> ${location}<br>
         🛏 <strong>Bedrooms:</strong> ${bedrooms}<br>
         🚿 <strong>Bathrooms:</strong> ${bathrooms} ${ensuites ? `(🛁 ${ensuites} ensuite)` : ""}<br>
-        ${garages ? `🚗 <strong>Garages:</strong> ${garages}<br>` : ``}
+        🚗 <strong>Garages:</strong> ${garages}<br>
         📐 <strong>Living space:</strong> ${interior} m²<br>
-        ${lot ? `🌳 <strong>Lot size:</strong> ${lot} m²<br>` : ``}
+        🌳 <strong>Lot size:</strong> ${lot} m²<br>
         ✨ <strong>Features:</strong> ${notes}<br>
-        ${agent ? `🔑 <strong>Agent:</strong> ${agent}<br>` : ``}<br>` + output;
+        🔑 <strong>Agent:</strong> ${agent}<br><br>` + output;
         document.getElementById("result").innerHTML = decorated;
         
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;

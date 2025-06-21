@@ -185,7 +185,7 @@
 
       const data = await res.json();
       const output = data.result || "Something went wrong.";
-      document.getElementById("result").textContent = output;
+      document.getElementById("result").innerHTML = `<pre style="font-size: 16px; line-height: 1.5;">${output}</pre>`;
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;
       document.getElementById("output-container").style.display = 'block';
       document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
@@ -205,7 +205,7 @@
       .then(res => res.json())
       .then(data => {
         const updated = data.result || original;
-        document.getElementById("result").textContent = updated;
+        document.getElementById("result").innerHTML = `<pre style="font-size: 16px; line-height: 1.5;">${updated}</pre>`;
         document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
         document.getElementById("enhance").value = "";
         document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
@@ -213,19 +213,22 @@
     }
 
     function copyToClipboard() {
-      const text = document.getElementById("result").textContent;
-      navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+      const rawHTML = document.getElementById("result").innerHTML;
+const cleaned = rawHTML.replace(/<[^>]*>/g, '').replace(/Logo:.*(\n)?/, '');
+      navigator.clipboard.writeText(document.getElementById("result").innerHTML).then(() => alert("✅ Copied to clipboard!"));
     }
 
     function exportToText() {
-      const text = document.getElementById("result").textContent;
+      const rawHTML = document.getElementById("result").innerHTML;
+const cleaned = rawHTML.replace(/<[^>]*>/g, '').replace(/Logo:.*(\n)?/, '');
       const cleaned = text.replace(/Logo:.*(\n)?/, '');
       const blob = new Blob([cleaned], { type: "text/plain" });
       triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
     }
 
     function exportToWord() {
-      const text = document.getElementById("result").textContent;
+      const rawHTML = document.getElementById("result").innerHTML;
+const cleaned = rawHTML.replace(/<[^>]*>/g, '').replace(/Logo:.*(\n)?/, '');
       const logoInput = document.getElementById("logoFile");
 
       if (logoInput && logoInput.files && logoInput.files[0]) {
@@ -346,46 +349,5 @@
       });
     });
   </script>
-<script src="https://unpkg.com/html-docx-js/dist/html-docx.js">
-async function generate() {
-  const type = document.getElementById("type").value;
-  const status = document.getElementById("status").value;
-  const location = document.getElementById("location").value.trim();
-  const bedrooms = document.getElementById("bedrooms").value;
-  const bathrooms = document.getElementById("bathrooms").value;
-  const ensuites = document.getElementById("ensuites").value;
-  const garages = document.getElementById("garages").value;
-  const interior = document.getElementById("interior").value;
-  const lot = document.getElementById("lot").value;
-  const notes = document.getElementById("notes").value.trim();
-  const agent = document.getElementById("agent").value.trim();
-
-  if (!type || !status || !location) {
-    alert("Please fill in at least type, status, and location.");
-    return;
-  }
-
-  const title = `${type} ${status} in ${location}`;
-
-  let htmlOutput = `
-    <h3>🏡 ${title} 🏡</h3>
-    <p>Located in the prestigious ${location}, this beautiful property offers a perfect blend of comfort and style.</p>
-    <h4>Property Features:</h4>
-    <ul style="list-style:none; padding-left:0;">
-      ${bedrooms ? `<li>🛏 ${bedrooms} Bedrooms</li>` : ''}
-      ${bathrooms ? `<li>🚿 ${bathrooms} Bathrooms${ensuites ? ` (${ensuites} ensuite)` : ''}</li>` : ''}
-      ${garages ? `<li>🚗 ${garages} Garages</li>` : ''}
-      ${interior ? `<li>🏡 Living Space: ${interior} m²</li>` : ''}
-      ${lot ? `<li>🌳 Lot Size: ${lot} m²</li>` : ''}
-    </ul>
-    ${notes && !notes.toLowerCase().includes("list any") && !notes.includes("[") ? `<h4>Additional Features:</h4><p>✨ ${notes}</p>` : ''}
-    ${agent && !agent.includes('[Insert Agent') ? `<h4>Agent Details:</h4><p>🔑 Listed by:<br>${agent.replaceAll('\n', '<br/>').replace(/(\d{10,})/, '📞 $1').replace(/(\S+@\S+)/, '📧 $1')}</p>` : ''}
-  `;
-
-  document.getElementById("result").innerHTML = htmlOutput;
-  document.getElementById("char-count").textContent = `Character count: ${htmlOutput.replace(/<[^>]*>/g, '').length}`;
-  document.getElementById("output-container").style.display = 'block';
-  document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
-}
-</script></body>
+</body>
 </html>

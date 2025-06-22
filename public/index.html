@@ -197,7 +197,7 @@ Property Details:
       const data = await res.json();
       const output = data.result || "Something went wrong.";
       
-        
+  /*      
 let bullets = '';
 
 if (type) bullets += `🏠 <strong>Type:</strong> ${type}<br>`;
@@ -214,7 +214,7 @@ if (agent) bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
 
 const decorated = output + "<br><br>" + bullets;
 
-        document.getElementById("result").innerHTML = decorated;
+        document.getElementById("result").innerHTML = decorated; */
         
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;
       document.getElementById("output-container").style.display = 'block';

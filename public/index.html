@@ -227,7 +227,7 @@ const decorated = output + "<br><br>" + bullets;
       const enhancement = document.getElementById("enhance").value.trim();
       if (!enhancement) return alert("Please enter an enhancement.");
       const original = document.getElementById("result").textContent;
-      const newPrompt = `Improve this real estate listing: "${original}" with: "${enhancement}"`;
+      const newPrompt = `Please improve the following real estate listing using this enhancement: "${enhancement}". Maintain the exact structure — keep the title, paragraph body, and bullet list in the same format. Do not restructure the layout:\n\n${original}`;
 
       fetch("/generate", {
         method: "POST",

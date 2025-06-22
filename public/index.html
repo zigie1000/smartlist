@@ -171,11 +171,17 @@
       }
 
       const title = `${type} ${status.toLowerCase()} in ${location}`;
-      const prompt = `Create a professional real estate listing for a ${title}.
-        It has ${bedrooms} bedrooms, ${bathrooms} bathrooms (${ensuites} ensuite), ${garages} garages.
-        Living space: ${interior} m². Lot size: ${lot} m².
-        Additional features: ${notes}.
-        Agent: ${agent}.`;
+      const prompt = `Write a professional real estate listing from the following input. Start with an attractive title using emojis. Then generate a styled paragraph, followed by a clean bullet list of features using emojis where appropriate. Avoid duplicating data. Input:
+Type: ${type}
+Status: ${status}
+Location: ${location}
+Bedrooms: ${bedrooms}
+Bathrooms: ${bathrooms} (${ensuites} ensuite)
+Garages: ${garages}
+Living Space: ${interior} m²
+Lot Size: ${lot} m²
+Additional Features: ${notes}
+Agent: ${agent}`;
 
       const res = await fetch("/generate", {
         method: "POST",

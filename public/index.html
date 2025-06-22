@@ -201,7 +201,7 @@ if (lot) bullets += `🌳 <strong>Lot size:</strong> ${lot} m²<br>`;
 if (notes) bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
 if (agent) bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
 
-const decorated = output + "<br><br>" + bullets;
+const decorated = `<strong style="font-size: 18px;">🏡 ${title}</strong><br><br>` + output + "<br><br>" + bullets;
 
         document.getElementById("result").innerHTML = decorated;
         

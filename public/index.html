@@ -184,8 +184,7 @@
       });
 
       const data = await res.json();
-      let output = data.result || "Something went wrong.";
-        output = output.replace(/\[Insert.*?\]/gi, '').trim(); // removes placeholder prompts only
+      const output = data.result || "Something went wrong.";
       
         
 let bullets = '';

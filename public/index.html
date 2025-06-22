@@ -184,7 +184,8 @@
       });
 
       const data = await res.json();
-      const output = data.result || "Something went wrong.";
+      let output = data.result || "Something went wrong.";
+output = output.replace(/\[Insert any.*?\]/gi, '').replace(/Additional Features:\s*/gi, '').trim();
       
         
 let bullets = '';

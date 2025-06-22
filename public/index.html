@@ -184,7 +184,8 @@
       });
 
       const data = await res.json();
-      const output = data.result || "Something went wrong.";
+      let output = data.result || "Something went wrong.";
+output = output.replace(/\[Insert any.*?\]/gi, '').replace(/Additional Features:\s*/gi, '').trim();
       
         
 let bullets = '';
@@ -201,7 +202,7 @@ if (lot) bullets += `🌳 <strong>Lot size:</strong> ${lot} m²<br>`;
 if (notes) bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
 if (agent) bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
 
-const decorated = output + "<br><br>" + bullets;
+let decorated = output + "<br><br>" + bullets;
 
         document.getElementById("result").innerHTML = decorated;
         

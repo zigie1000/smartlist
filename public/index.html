@@ -198,31 +198,12 @@ if (bathrooms || ensuites) bullets += "<br>";
 if (garages) bullets += `🚗 <strong>Garages:</strong> ${garages}<br>`;
 if (interior) bullets += `📐 <strong>Living space:</strong> ${interior} m²<br>`;
 if (lot) bullets += `🌳 <strong>Lot size:</strong> ${lot} m²<br>`;
-if (notes) bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
-if (agent) bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
+if (notes && notes.replace(/\s+/g, '') !== '') bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
+if (agent && agent.replace(/\s+/g, '') !== '') bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
 
-let decorated = `<strong style="font-size: 18px;">🏡 ${title}</strong><br><br>${output}<br><br>`;
+const decorated = `<strong style="font-size: 18px;">🏡 ${title}</strong><br><br>` + output + "<br><br>" + bullets;
 
-let bullets = '';
-if (type) bullets += `🏠 <strong>Type:</strong> ${type}<br>`;
-if (location) bullets += `📍 <strong>Location:</strong> ${location}<br>`;
-if (bedrooms) bullets += `🛏 <strong>Bedrooms:</strong> ${bedrooms}<br>`;
-if (bathrooms) bullets += `🚿 <strong>Bathrooms:</strong> ${bathrooms}`;
-if (ensuites) bullets += ` (🛁 ${ensuites} ensuite)`;
-if (bathrooms || ensuites) bullets += "<br>";
-if (garages) bullets += `🚗 <strong>Garages:</strong> ${garages}<br>`;
-if (interior) bullets += `📐 <strong>Living space:</strong> ${interior} m²<br>`;
-if (lot) bullets += `🌳 <strong>Lot size:</strong> ${lot} m²<br>`;
-if (notes && notes.replace(/\s+/g, '') !== '') {
-  bullets += `✨ <strong>Features:</strong> ${notes}<br>`;
-}
-if (agent && agent.replace(/\s+/g, '') !== '') {
-  bullets += `🔑 <strong>Agent:</strong> ${agent}<br>`;
-}
-if (bullets.trim() !== '') {
-  decorated += bullets;
-}
-
+        if (bullets.trim() !== "") { decorated += bullets; }
         document.getElementById("result").innerHTML = decorated;
         
       document.getElementById("char-count").textContent = `Character count: ${output.length}`;

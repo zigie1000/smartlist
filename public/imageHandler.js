@@ -39,7 +39,7 @@ function setupImageHandlers() {
         const img = new Image();
         img.src = e.target.result;
         preview.appendChild(img);
-        propertyImagesBase64.push(e.target.result);
+        propertyImagesBase64.push(e.target.result);  // â FIXED: Store base64
       };
       reader.readAsDataURL(file);
     });
@@ -47,19 +47,19 @@ function setupImageHandlers() {
 }
 
 window.customExportToWord = function () {
-  const content = document.getElementById("result").innerText;
+  const content = document.getElementById("result").innerHTML; // â FIXED: innerHTML
   let html = "<html><body>";
 
   if (logoImageBase64) {
-    html += `<img src="\${logoImageBase64}" style="max-height:60px;"><br><br>`;
+    html += `<img src="${logoImageBase64}" style="max-height:60px;"><br><br>`;
   }
 
-  html += `<pre>\${content}</pre>`;
+  html += content;
 
   if (propertyImagesBase64.length > 0) {
     html += "<hr><p><strong>Images:</strong></p>";
     propertyImagesBase64.forEach(src => {
-      html += `<br><img src="\${src}" style="max-width:300px;"><br>`;
+      html += `<img src="${src}" style="max-width:300px;"><br>`;
     });
   }
 
@@ -100,7 +100,7 @@ window.customExportToPDF = function () {
   triggerDownload(blob, filename);
 };
 
-// Optional utility for download
+// Utility for download
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -94,3 +94,6 @@ function exportToPDF() {
     printWindow.focus();
     printWindow.print();
 }
+
+window.exportToWord = exportToWord;
+window.exportToPDF = exportToPDF;

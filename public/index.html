@@ -144,6 +144,9 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+window.logoImageBase64 = "";
+window.propertyImagesBase64 = [];
+
     let logoImageBase64 = "";
 
     function getTimestampFilename(base, extension) {
@@ -379,6 +382,9 @@ const decorated = output + "<br><br>" + bullets;
     });
   </script>
 <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script><script>
+window.logoImageBase64 = "";
+window.propertyImagesBase64 = [];
+
     // Fallback flag to detect external overrides
     window.addEventListener("DOMContentLoaded", () => {
       if (typeof exportToWord === "function") {

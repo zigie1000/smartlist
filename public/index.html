@@ -378,5 +378,26 @@ const decorated = output + "<br><br>" + bullets;
       });
     });
   </script>
-<script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script></body>
+<script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script><script>
+    // Fallback flag to detect external overrides
+    window.addEventListener("DOMContentLoaded", () => {
+      if (typeof exportToWord === "function") {
+        const originalExportToWord = exportToWord;
+        exportToWord = function () {
+          if (typeof customExportToWord === "function") return customExportToWord();
+          return originalExportToWord();
+        };
+      }
+
+      if (typeof exportToPDF === "function") {
+        const originalExportToPDF = exportToPDF;
+        exportToPDF = function () {
+          if (typeof customExportToPDF === "function") return customExportToPDF();
+          return originalExportToPDF();
+        };
+      }
+    });
+</script>
+<script src="imageHandler.js"></script>
+</body>
 </html>

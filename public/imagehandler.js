@@ -1,96 +1,92 @@
-let uploadedLogoBase64 = '';
-let l
-function toBase64(file, callback) {
-  const reader = new FileReader();
-  reader.onloadend = () => callback(reader.result);
-  reader.readAsDataURL(file);
+// Enhance text content
+function enhanceText() {
+  const title = document.getElementById("title").value;
+  const description = document.getElementById("description").value;
+  const features = document.getElementById("features").value;
+  const agent = document.getElementById("agent").value;
+  const output = document.getElementById("output");
+
+  output.innerHTML = `
+    <h1>${title}</h1>
+    <p>${description}</p>
+    <ul>${features.split("\n").map(f => f ? `<li>${f}</li>` : '').join('')}</ul>
+    <p><strong>Agent:</strong> ${agent}</p>
+  `;
 }
 
-document.getElementById('logoInput')?.addEventListener('change', function () {
-  const file = this.files[0];
-  if (file) {
-    toBase64(file, (base64) => {
-      uploadedLogoBase64 = base64;
-      document.getElementById('logoPreview').innerHTML = '<img src="' + base64 + '" style="max-height:60px;" />';
-      // Add logo to result so PDF includes it
-      const logoImg = document.createElement('img');
-      logoImg.src = base64;
-      logoImg.style = "max-height:60px; margin-bottom:10px;";
-      document.getElementById('result').prepend(logoImg);
-    });
-  }
-});
+// Resize images before export
+function resizeImagesForExport() {
+  const images = document.querySelectorAll("img");
 
-document.getElementById('imageInput')?.addEventListener('change', function () {
-  const file = this.files[0];
-  if (file) {
-    toBase64(file, (base64) => {
-      uploadedImageBase64 = base64;
-      document.getElementById('imagePreview').innerHTML = '<img src="' + base64 + '" style="max-height:100px;" />';
-      // Add property image to result so PDF includes it
-      const propImg = document.createElement('img');
-      propImg.src = base64;
-      propImg.style = "max-height:100px; margin-top:10px; margin-bottom:10px;";
-      document.getElementById('result').appendChild(propImg);
-    });
-  }
-});
+  images.forEach(img => {
+    if (img.naturalWidth > 600) {
+      const canvas = document.createElement("canvas");
+      const scaleFactor = 600 / img.naturalWidth;
+      canvas.width = 600;
+      canvas.height = img.naturalHeight * scaleFactor;
 
-document.getElementById('exportWord')?.addEventListener('click', async () => {
-  const content = document.getElementById('result');
-  const docChildren = [];
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  // Add logo image if present
-  if (uploadedLogoBase64) {
-    const imageBuffer = await fetch(uploadedLogoBase64).then(res => res.arrayBuffer());
-    docChildren.push(new docx.Paragraph({
-      children: [new docx.ImageRun({
-        data: imageBuffer,
-        transformation: { width: 150, height: 60 }
-      })],
-      spacing: { after: 200 }
-    }));
-  }
+      img.setAttribute("data-original-src", img.src);
+      img.src = canvas.toDataURL("image/jpeg", 0.85);
+    }
 
-  // Add each line of text separately to preserve emojis
-  const textLines = content?.innerText?.split('\n') || [];
-  textLines.forEach(line => {
-    docChildren.push(new docx.Paragraph({
-      children: [
-        new docx.TextRun({
-          text: line,
-          font: "Segoe UI Emoji"
-        })
-      ]
-    }));
+    img.style.maxWidth = "600px";
+    img.style.height = "auto";
+  });
+}
+
+// Export to Word
+function exportToWord() {
+  resizeImagesForExport();
+
+  const content = document.getElementById("content").cloneNode(true);
+
+  const htmlContent = \`
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; }
+          img { max-width: 600px; height: auto; }
+        </style>
+      </head>
+      <body>\${content.innerHTML}</body>
+    </html>
+  \`;
+
+  const blob = new Blob(['\ufeff', htmlContent], {
+    type: 'application/msword',
   });
 
-  // Add property image if present
-  if (uploadedImageBase64) {
-    const imageBuffer = await fetch(uploadedImageBase64).then(res => res.arrayBuffer());
-    docChildren.push(new docx.Paragraph({
-      children: [new docx.ImageRun({
-        data: imageBuffer,
-        transformation: { width: 400, height: 300 }
-      })],
-      spacing: { before: 300 }
-    }));
-  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "listing.doc";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
-  const doc = new docx.Document({ sections: [{ properties: {}, children: docChildren }] });
-  const blob = await docx.Packer.toBlob(doc);
-  const filename = "PromptAgentHQ_Listing_" + new Date().toISOString().replace(/[:.]/g, '-') + ".docx";
-  saveAs(blob, filename);
-});
+// Export to PDF
+function exportToPDF() {
+  resizeImagesForExport();
 
-document.getElementById('exportPDF')?.addEventListener('click', () => {
-  const content = document.getElementById('result');
+  const element = document.getElementById("content");
+
   const opt = {
-    margin: 0.5,
-    filename: "PromptAgentHQ_Listing_" + new Date().toISOString().replace(/[:.]/g, '-') + ".pdf",
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    margin:       0.5,
+    filename:     'listing.pdf',
+    image:        { type: 'jpeg', quality: 0.95 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
-  html2pdf().set(opt).from(content).save();
-});
+
+  html2pdf().set(opt).from(element).save();
+}
+
+// Event Listeners
+document.getElementById("generate").addEventListener("click", enhanceText);
+document.getElementById("exportWord").addEventListener("click", exportToWord);
+document.getElementById("exportPDF").addEventListener("click", exportToPDF);

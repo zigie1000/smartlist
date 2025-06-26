@@ -1,114 +1,96 @@
-// imageHandler.js
-
+// Global references
 logoImageBase64 = window.logoImageBase64;
 propertyImagesBase64 = window.propertyImagesBase64;
 
-function setupImageHandlers() {
-  // Handle logo preview and base64 conversion
-  document.getElementById("logoFile").addEventListener("change", function () {
-    const preview = document.getElementById("logo-preview");
-    preview.innerHTML = "";
-    const file = this.files[0];
-    if (!file || file.size > 2 * 1024 * 1024) return;
+// Handle logo upload
+document.getElementById("logoInput").addEventListener("change", function (e) {
+    const file = e.target.files[0];
     const reader = new FileReader();
-    reader.onload = function (e) {
-      const img = new Image();
-      img.src = e.target.result;
-      img.style.maxHeight = "60px";
-      preview.appendChild(img);
-      logoImageBase64 = e.target.result;
+    reader.onloadend = function () {
+        logoImageBase64 = reader.result;
+        window.logoImageBase64 = logoImageBase64;
+        document.getElementById("logoPreview").src = logoImageBase64;
+        document.getElementById("logoPreview").style.display = "block";
     };
-    reader.readAsDataURL(file);
-  });
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+});
 
-  // Handle property images
-  document.getElementById("images").addEventListener("change", function () {
-    const preview = document.getElementById("image-preview");
-    preview.innerHTML = "";
+// Handle property image uploads
+document.getElementById("imageInput").addEventListener("change", function (e) {
+    const files = e.target.files;
     propertyImagesBase64 = [];
-    const files = Array.from(this.files);
-    if (files.length > 3) {
-      alert("Maximum 3 images allowed.");
-      this.value = "";
-      return;
-    }
-    files.forEach(file => {
-      if (file.size > 2 * 1024 * 1024) return;
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const img = new Image();
-        img.src = e.target.result;
-        preview.appendChild(img);
-        propertyImagesBase64.push(e.target.result);  // Ã¢ÂÂ FIXED: Store base64
-      };
-      reader.readAsDataURL(file);
+    window.propertyImagesBase64 = propertyImagesBase64;
+    const previewContainer = document.getElementById("imagePreviewContainer");
+    previewContainer.innerHTML = "";
+
+    Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = function () {
+            const img = document.createElement("img");
+            img.src = reader.result;
+            img.style.maxWidth = "100px";
+            img.style.margin = "5px";
+            previewContainer.appendChild(img);
+            propertyImagesBase64.push(reader.result);
+        };
+        reader.readAsDataURL(file);
     });
-  });
+});
+
+// Export to Word
+function exportToWord() {
+    const content = document.querySelector('.main-container').innerHTML;
+    const logoHTML = (window.logoImageBase64)
+      ? "<div style='text-align:center; margin-bottom:20px;'><img src='" + window.logoImageBase64 + "' alt='Logo' style='max-height:80px;' /></div>"
+      : "";
+
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+                   "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+                   "xmlns='http://www.w3.org/TR/REC-html40'>" +
+                   "<head><meta charset='utf-8'><title>Document</title></head><body>";
+    const footer = "</body></html>";
+    const fullHTML = header + logoHTML + content + footer;
+
+    const blob = new Blob(['ï»¿', fullHTML], {
+        type: 'application/msword;charset=utf-8'
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Listing_With_Images_" + new Date().toISOString() + ".doc";
+    link.click();
 }
 
-window.customExportToWord = function () {
-  const content = document.getElementById("result").innerHTML; // Ã¢ÂÂ FIXED: innerHTML
-  let html = "<html><body>";
+// Export to PDF
+function exportToPDF() {
+    const content = document.querySelector('.main-container').outerHTML;
+    const logoHTML = (window.logoImageBase64)
+      ? "<div style='text-align:center; margin-bottom:20px;'><img src='" + window.logoImageBase64 + "' alt='Logo' style='max-height:80px;' /></div>"
+      : "";
 
-  if (logoImageBase64) {
-    html += `<img src="${logoImageBase64}" style="max-height:60px;"><br><br>`;
-  }
+    const styles = document.querySelector('style')?.outerHTML || '';
+    const fullContent = `
+        <html>
+        <head>
+            <title>Export PDF</title>
+            ${styles}
+            <style>
+                @media print {
+                    .emoji-print-hidden { display: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            ${logoHTML}
+            ${content}
+        </body>
+        </html>`;
 
-  html += content;
-
-  if (propertyImagesBase64.length > 0) {
-    html += "<hr><p><strong>Images:</strong></p>";
-    propertyImagesBase64.forEach(src => {
-      html += `<img src="${src}" style="max-width:300px;"><br>`;
-    });
-  }
-
-  html += "</body></html>";
-
-  const blob = window.htmlDocx.asBlob(html, { orientation: 'portrait' });
-  const filename = "Listing_With_Images_" + new Date().toISOString().replace(/[:.]/g, "-") + ".docx";
-  triggerDownload(blob, filename);
-};
-
-window.customExportToPDF = function () {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const text = document.getElementById("result").innerText;
-  let y = 20;
-
-  if (logoImageBase64) {
-    doc.addImage(logoImageBase64, "PNG", 15, 10, 40, 20);
-    y = 35;
-  }
-
-  const lines = doc.splitTextToSize(text, 180);
-  doc.text(lines, 15, y);
-
-  y += lines.length * 7;
-
-  propertyImagesBase64.forEach(img => {
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.addImage(img, "JPEG", 15, y + 10, 60, 45);
-    y += 60;
-  });
-
-  const blob = doc.output("blob");
-  const filename = "Listing_With_Images_" + new Date().toISOString().replace(/[:.]/g, "-") + ".pdf";
-  triggerDownload(blob, filename);
-};
-
-// Utility for download
-function triggerDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(fullContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
 }
-
-// Auto-initialize handlers when loaded
-window.addEventListener("DOMContentLoaded", setupImageHandlers);

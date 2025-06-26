@@ -1,6 +1,5 @@
 let uploadedLogoBase64 = '';
-let uploadedImageBase64 = '';
-
+let l
 function toBase64(file, callback) {
   const reader = new FileReader();
   reader.onloadend = () => callback(reader.result);

@@ -1,7 +1,7 @@
 // imageHandler.js
 
-let logoImageBase64 = "";
-let propertyImagesBase64 = [];
+logoImageBase64 = window.logoImageBase64;
+propertyImagesBase64 = window.propertyImagesBase64;
 
 function setupImageHandlers() {
   // Handle logo preview and base64 conversion
@@ -39,7 +39,7 @@ function setupImageHandlers() {
         const img = new Image();
         img.src = e.target.result;
         preview.appendChild(img);
-        propertyImagesBase64.push(e.target.result);  // â FIXED: Store base64
+        propertyImagesBase64.push(e.target.result);  // Ã¢ÂÂ FIXED: Store base64
       };
       reader.readAsDataURL(file);
     });
@@ -47,7 +47,7 @@ function setupImageHandlers() {
 }
 
 window.customExportToWord = function () {
-  const content = document.getElementById("result").innerHTML; // â FIXED: innerHTML
+  const content = document.getElementById("result").innerHTML; // Ã¢ÂÂ FIXED: innerHTML
   let html = "<html><body>";
 
   if (logoImageBase64) {

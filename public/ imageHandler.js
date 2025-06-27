@@ -39,7 +39,7 @@ function setupImageHandlers() {
         const img = new Image();
         img.src = e.target.result;
         preview.appendChild(img);
-        propertyImagesBase64.push(e.target.result);  // ✅ FIXED: Store base64
+        propertyImagesBase64.push(e.target.result);  // â FIXED: Store base64
       };
       reader.readAsDataURL(file);
     });
@@ -47,7 +47,7 @@ function setupImageHandlers() {
 }
 
 window.customExportToWord = function () {
-  const content = document.getElementById("result").innerHTML; // ✅ FIXED: innerHTML
+  const content = document.getElementById("result").innerHTML; // â FIXED: innerHTML
   let html = "<html><body>";
 
   if (logoImageBase64) {

@@ -53,9 +53,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const delBtn = document.createElement("button");
             delBtn.innerText = "❌";
             delBtn.onclick = function () {
-              const newFiles = Array.from(propertyImagesInput.files).filter((_, i) => i !== index);
+              const updatedFiles = Array.from(propertyImagesInput.files).filter((_, i) => i !== index);
               const dataTransfer = new DataTransfer();
-              newFiles.forEach(f => dataTransfer.items.add(f));
+              updatedFiles.forEach(f => dataTransfer.items.add(f));
               propertyImagesInput.files = dataTransfer.files;
               propertyImagesInput.dispatchEvent(new Event("change"));
             };

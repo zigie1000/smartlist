@@ -1,33 +1,38 @@
 import sys
+import os
 from docx import Document
 from docx.shared import Inches
-import os
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
-# Usage: python3 generate_docx.py input.txt logo.png [image1.png image2.png ...]
+def generate_docx(input_file, logo_path=None, image_paths=[]):
+    doc = Document()
 
-input_txt = sys.argv[1]
-logo_path = sys.argv[2]
-image_paths = sys.argv[3:]
-output_docx = "/tmp/PromptAgentHQ_Listing.docx"
+    # Insert logo if provided
+    if logo_path and os.path.exists(logo_path):
+        logo = doc.add_picture(logo_path, width=Inches(2.5))
+        last_paragraph = doc.paragraphs[-1]
+        last_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        doc.add_paragraph()  # Add space after logo
 
-doc = Document()
-
-# Insert logo if available
-if os.path.exists(logo_path):
-    doc.add_picture(logo_path, width=Inches(2))
-    doc.add_paragraph("")  # Spacer
-
-# Insert text content
-with open(input_txt, "r", encoding="utf-8") as f:
-    text = f.read().strip()
+    # Add the listing text
+    with open(input_file, 'r', encoding='utf-8') as f:
+        text = f.read()
     doc.add_paragraph(text)
-    doc.add_paragraph("")  # Spacer
 
-# Insert property images if any
-for image_path in image_paths:
-    if os.path.exists(image_path):
-        doc.add_picture(image_path, width=Inches(5))
-        doc.add_paragraph("")  # Spacer
+    # Insert property images if provided
+    if image_paths:
+        doc.add_paragraph()  # Spacer
+        doc.add_paragraph("Property Images:")
+        for img_path in image_paths:
+            if os.path.exists(img_path):
+                doc.add_picture(img_path, width=Inches(3))
+                doc.add_paragraph()  # Space between images
 
-# Save the document
-doc.save(output_docx)
+    doc.save("/tmp/PromptAgentHQ_Listing.docx")
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+    input_file = args[0]
+    logo = args[1] if len(args) > 1 else None
+    images = args[2:] if len(args) > 2 else []
+    generate_docx(input_file, logo, images)

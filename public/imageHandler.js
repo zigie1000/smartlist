@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", function () {
           const img = document.createElement("img");
           img.src = e.target.result;
           img.style.maxWidth = "100px";
-          img.style.marginRight = "10px";
           img.style.borderRadius = "6px";
 
           const delBtn = document.createElement("button");
@@ -25,7 +24,9 @@ document.addEventListener("DOMContentLoaded", function () {
           };
 
           const wrapper = document.createElement("div");
-          wrapper.style.display = "inline-block";
+          wrapper.style.display = "inline-flex";
+          wrapper.style.alignItems = "center";
+          wrapper.style.gap = "10px";
           wrapper.style.marginBottom = "10px";
           wrapper.appendChild(img);
           wrapper.appendChild(delBtn);
@@ -47,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const img = document.createElement("img");
             img.src = e.target.result;
             img.style.maxWidth = "100px";
-            img.style.marginRight = "10px";
             img.style.borderRadius = "6px";
 
             const delBtn = document.createElement("button");
@@ -61,7 +61,9 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             const wrapper = document.createElement("div");
-            wrapper.style.display = "inline-block";
+            wrapper.style.display = "inline-flex";
+            wrapper.style.alignItems = "center";
+            wrapper.style.gap = "10px";
             wrapper.style.marginBottom = "10px";
             wrapper.appendChild(img);
             wrapper.appendChild(delBtn);

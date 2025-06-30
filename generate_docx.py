@@ -25,16 +25,8 @@ def generate_docx(input_file, logo_path=None, image_paths=[]):
             doc.add_picture(image_path, width=Inches(5))
             doc.add_paragraph("")  # Spacer after image
 
-    # Insert property images if provided
-    if image_paths:
-        doc.add_paragraph()  # Spacer
-        doc.add_paragraph("Property Images:")
-        for img_path in image_paths:
-            if os.path.exists(img_path):
-                doc.add_picture(img_path, width=Inches(3))
-                doc.add_paragraph()  # Space between images
 
-    doc.save("/tmp/PromptAgentHQ_Listing.docx")
+doc.save(output_docx)
 
 if __name__ == "__main__":
     args = sys.argv[1:]

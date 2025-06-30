@@ -18,6 +18,12 @@ def generate_docx(input_file, logo_path=None, image_paths=[]):
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
     doc.add_paragraph(text)
+    doc.add_paragraph("")  # Spacer after text
+    # ✅ Insert property images if any
+    for image_path in image_paths:
+        if os.path.exists(image_path):
+            doc.add_picture(image_path, width=Inches(5))
+            doc.add_paragraph("")  # Spacer after image
 
     # Insert property images if provided
     if image_paths:

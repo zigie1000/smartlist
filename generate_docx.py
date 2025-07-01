@@ -7,25 +7,25 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 def generate_docx(input_file, output_file, logo_path=None, image_paths=[]):
     doc = Document()
 
-    # Add logo
+    # Insert logo if provided
     if logo_path and os.path.exists(logo_path):
         doc.add_picture(logo_path, width=Inches(2.5))
         doc.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        doc.add_paragraph()
+        doc.add_paragraph()  # Spacer
 
-    # Add text
+    # Insert main listing text
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
     doc.add_paragraph(text)
-    doc.add_paragraph()
+    doc.add_paragraph("")  # Spacer
 
     # Add up to 3 images
     for image_path in image_paths[:3]:
         if os.path.exists(image_path):
             doc.add_picture(image_path, width=Inches(5))
-            doc.add_paragraph()
+            doc.add_paragraph("")  # Spacer
 
-    # 🔥 Save the DOCX file
+    # Save final .docx
     doc.save(output_file)
 
 if __name__ == "__main__":

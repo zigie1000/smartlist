@@ -2,13 +2,16 @@
 const axios = require('axios');
 
 async function validateLicenseKey(licenseKey) {
-  if (!licenseKey) return "free";
+  if (!licenseKey) return 'free';
 
-  // Simulate Stripe test keys
-  if (licenseKey === "test_monthly_abc") return "pro";
-  if (licenseKey === "test_annual_xyz") return "premium";
+  // Simulate Stripe Test keys
+  if (licenseKey.startsWith('test_')) {
+    if (licenseKey.includes('monthly')) return 'pro';
+    if (licenseKey.includes('annual')) return 'premium';
+    return 'free';
+  }
 
-  // Validate with LemonSqueezy
+  // LemonSqueezy real validation (optional in test/dev)
   try {
     const response = await axios.post(
       'https://api.lemonsqueezy.com/v1/licenses/validate',
@@ -16,18 +19,22 @@ async function validateLicenseKey(licenseKey) {
       {
         headers: {
           Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY_TEST}`,
-          'Content-Type': 'application/json'
-        }
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
       }
     );
 
-    const isValid = response?.data?.data?.valid;
-    const variant = response?.data?.data?.license?.variant_name?.toLowerCase();
+    if (response.data && response.data.valid) {
+      const variant = response.data.meta.variant_name.toLowerCase();
+      if (variant.includes('monthly')) return 'pro';
+      if (variant.includes('yearly') || variant.includes('annual')) return 'premium';
+    }
 
-    return isValid && variant ? variant : "free";
-  } catch (err) {
-    console.warn("License validation failed:", err.message || err);
-    return "free";
+    return 'free';
+  } catch (error) {
+    console.warn('License check failed:', error.message || error);
+    return 'free';
   }
 }
 

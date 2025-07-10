@@ -4,84 +4,66 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const OpenAI = require('openai');
 const path = require('path');
-const axios = require('axios');
 require('dotenv').config();
 const { checkTier } = require('./tierControl');
 
 const app = express();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const LICENSE_FILE = path.join(__dirname, 'licenses.json');
+let licenseStore = {};
 
-// License validation middleware
-async function validateLicense(req, res, next) {
+// Load licenses if file exists
+if (fs.existsSync(LICENSE_FILE)) {
+  licenseStore = JSON.parse(fs.readFileSync(LICENSE_FILE));
+}
+
+// Middleware to validate license key
+function validateLicense(req, res, next) {
   const licenseKey = req.headers['x-license-key'];
+
   if (!licenseKey) {
-    req.userTier = "free";
-    return next();
-  // 🔐 Check local Stripe-issued licenses
-  try {
-    const licensePath = path.join(__dirname, 'licenseStore.json');
-    if (fs.existsSync(licensePath)) {
-      const licenses = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-      const entry = licenses[licenseKey];
-      if (entry && entry.expires && new Date(entry.expires) > new Date()) {
-        req.userTier = entry.tier || "pro"; // Default to pro if tier missing
-        return next();
-      }
-    }
-  } catch (e) {
-    console.warn("⚠️ Local license check failed:", e.message);
-  }
-
-  }
-
-  // Handle test keys manually
-  if (licenseKey.startsWith('test_')) {
-    if (licenseKey === 'test_monthly_abc') {
-      req.userTier = 'pro';
-    } else if (licenseKey === 'test_annual_xyz') {
-      req.userTier = 'premium';
-    } else {
-      req.userTier = 'free';
-    }
+    req.userTier = 'free';
     return next();
   }
 
-  try {
-    const response = await axios.post(
-      'https://api.lemonsqueezy.com/v1/licenses/validate',
-      { license_key: licenseKey },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY_TEST}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    const valid = response.data?.data?.valid;
-    req.userTier = valid ? (response.data.data.license.variant_name.toLowerCase()) : "free";
-  } catch (err) {
-    console.warn("License validation failed:", err.message || err);
-    req.userTier = "free";
+  const entry = licenseStore[licenseKey];
+  if (!entry) {
+    req.userTier = 'free';
+    return next();
   }
+
+  const now = new Date();
+  const expiry = new Date(entry.expires);
+  req.userTier = expiry > now ? (entry.productId === 'prod_SdrRYJOQdPx77F' ? 'pro' : 'premium') : 'free';
   next();
 }
 
-// Test endpoint
+// Endpoint to test license tier
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// Reset license (optional for testing, use with caution)
+// Reset license
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset. Refresh browser to continue.');
 });
 
-// OpenAI text generation
-app.post("/generate", async (req, res) => {
+// Lookup license by license key (optional)
+app.get('/lookup-license', (req, res) => {
+  const key = req.query.key;
+  if (!key) return res.status(400).send("License key required");
+  const entry = licenseStore[key];
+  if (!entry) return res.status(404).send("License not found");
+  res.json({ license: entry });
+});
+
+// OpenAI generation
+app.post("/generate", validateLicense, async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
 
@@ -104,7 +86,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// DOCX export with logo and images
+// DOCX Export
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -158,10 +140,18 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// Serve index.html
+// Serve index
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Stripe success page
+app.get("/success", (req, res) => {
+  res.send(`
+    <h2>✅ Payment Successful</h2>
+    <p>Your license key has been generated. You may now return to the app and paste it in the "License Key" field to unlock full access.</p>
+  `);
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

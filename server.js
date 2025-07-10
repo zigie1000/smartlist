@@ -8,7 +8,8 @@ const OpenAI = require('openai');
 const path = require('path');
 const axios = require('axios');
 const { checkTier } = require('./tierControl');
-
+const stripeWebhook = require('./stripeWebhook');
+app.use('/webhook', stripeWebhook);
 const app = express();
 
 let memoryLicenseKey = null;

@@ -134,3 +134,5 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+# Local license store (avoid overwriting on deploy)
+data/licenseStore.json

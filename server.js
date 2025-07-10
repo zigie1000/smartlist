@@ -1,5 +1,3 @@
-const { validateLicenseKey } = require('./licenseManager');
-require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -7,20 +5,10 @@ const { exec } = require('child_process');
 const OpenAI = require('openai');
 const path = require('path');
 const axios = require('axios');
+require('dotenv').config();
 const { checkTier } = require('./tierControl');
-const stripeWebhook = require('./stripeWebhook');
-app.use('/webhook', stripeWebhook);
+
 const app = express();
-
-let memoryLicenseKey = null;
-let memoryLicenseExpiration = null;
-
-app.get('/reset-license', (req, res) => {
-  memoryLicenseKey = null;
-  memoryLicenseExpiration = null;
-  console.log('🔁 License manually reset.');
-  res.send('✅ License reset successfully.');
-});
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -34,6 +22,7 @@ async function validateLicense(req, res, next) {
     return next();
   }
 
+  // Handle test keys manually
   if (licenseKey.startsWith('test_')) {
     if (licenseKey === 'test_monthly_abc') {
       req.userTier = 'pro';
@@ -70,7 +59,13 @@ app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// Handle text generation using OpenAI
+// Reset license (optional for testing, use with caution)
+app.get('/reset-license', (req, res) => {
+  res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
+  res.send('✅ License reset. Refresh browser to continue.');
+});
+
+// OpenAI text generation
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -94,7 +89,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// Enhanced DOCX export with logo and image support
+// DOCX export with logo and images
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");

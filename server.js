@@ -1,41 +1,3 @@
-// --- License Store Setup ---
-const fs = require('fs');
-const path = require('path');
-
-const LICENSE_STORE_PATH = path.join(__dirname, 'data', 'licenseStore.json');
-
-// Ensure the license store directory and file exist
-function ensureLicenseStore() {
-  const dir = path.dirname(LICENSE_STORE_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-
-  if (!fs.existsSync(LICENSE_STORE_PATH)) {
-    fs.writeFileSync(LICENSE_STORE_PATH, '[]', 'utf8');
-  }
-}
-
-// Load licenses from file
-function loadLicenses() {
-  ensureLicenseStore();
-  try {
-    const data = fs.readFileSync(LICENSE_STORE_PATH, 'utf8');
-    return JSON.parse(data || '[]');
-  } catch (err) {
-    console.error('Error reading license store:', err);
-    return [];
-  }
-}
-
-// Save licenses to file
-function saveLicenses(licenses) {
-  try {
-    fs.writeFileSync(LICENSE_STORE_PATH, JSON.stringify(licenses, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error saving license store:', err);
-  }
-}
-// --- End License Store Setup ---
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -58,6 +20,21 @@ async function validateLicense(req, res, next) {
   if (!licenseKey) {
     req.userTier = "free";
     return next();
+  // 🔐 Check local Stripe-issued licenses
+  try {
+    const licensePath = path.join(__dirname, 'licenseStore.json');
+    if (fs.existsSync(licensePath)) {
+      const licenses = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
+      const entry = licenses[licenseKey];
+      if (entry && entry.expires && new Date(entry.expires) > new Date()) {
+        req.userTier = entry.tier || "pro"; // Default to pro if tier missing
+        return next();
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ Local license check failed:", e.message);
+  }
+
   }
 
   // Handle test keys manually
@@ -100,13 +77,13 @@ app.get('/validate-license', validateLicense, (req, res) => {
 // Reset license (optional for testing, use with caution)
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
-  res.send('â License reset. Refresh browser to continue.');
+  res.send('✅ License reset. Refresh browser to continue.');
 });
 
 // OpenAI text generation
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
-  console.log("ð§  Prompt received:", userPrompt);
+  console.log("🧠 Prompt received:", userPrompt);
 
   try {
     const response = await openai.chat.completions.create({
@@ -119,10 +96,10 @@ app.post("/generate", async (req, res) => {
     });
 
     const output = response.choices[0].message.content.trim();
-    console.log("â OpenAI response:", output);
+    console.log("✅ OpenAI response:", output);
     res.json({ result: output });
   } catch (e) {
-    console.error("â OpenAI error:", e.response?.data || e.message || e);
+    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
@@ -160,19 +137,19 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      console.error("â Python exec error:", err.message);
+      console.error("❌ Python exec error:", err.message);
       console.error(stderr);
       return res.status(500).send("DOCX generation failed.");
     }
 
     if (!fs.existsSync(outputPath)) {
-      console.error("â File not created:", outputPath);
+      console.error("❌ File not created:", outputPath);
       return res.status(500).send("DOCX file not found.");
     }
 
     const stat = fs.statSync(outputPath);
     if (stat.size < 1000) {
-      console.warn("â ï¸ File created but may be invalid (too small)");
+      console.warn("⚠️ File created but may be invalid (too small)");
     }
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -187,27 +164,4 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-// â Serve success page
-app.get('/success', (req, res) => {
-  res.send(`
-    <h2>â Payment Successful</h2>
-    <p>Your license has been activated. You can now return to the app and use your license key.</p>
-  `);
-});
-
-// â Lookup license by email (optional)
-app.get('/lookup-license', (req, res) => {
-  const email = req.query.email;
-  if (!email) return res.status(400).send("Email required");
-
-  const licensePath = path.join(__dirname, 'licenseStore.json');
-  if (!fs.existsSync(licensePath)) return res.status(404).send("License store not found");
-
-  const licenses = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-  const entry = licenses[email];
-  if (!entry) return res.status(404).send("No license found for this email");
-
-  res.json({ license: entry });
-});
-
-app.listen(PORT, () => console.log(`ð Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

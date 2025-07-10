@@ -4,68 +4,71 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const OpenAI = require('openai');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config();
 const { checkTier } = require('./tierControl');
 
 const app = express();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const LICENSE_FILE = path.join(__dirname, 'licenses.json');
-let licenseStore = {};
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Load licenses if file exists
-if (fs.existsSync(LICENSE_FILE)) {
-  licenseStore = JSON.parse(fs.readFileSync(LICENSE_FILE));
-}
-
-// Middleware to validate license key
-function validateLicense(req, res, next) {
+// License validation middleware
+async function validateLicense(req, res, next) {
   const licenseKey = req.headers['x-license-key'];
-
   if (!licenseKey) {
-    req.userTier = 'free';
+    req.userTier = "free";
     return next();
   }
 
-  const entry = licenseStore[licenseKey];
-  if (!entry) {
-    req.userTier = 'free';
+  // Handle test keys manually
+  if (licenseKey.startsWith('test_')) {
+    if (licenseKey === 'test_monthly_abc') {
+      req.userTier = 'pro';
+    } else if (licenseKey === 'test_annual_xyz') {
+      req.userTier = 'premium';
+    } else {
+      req.userTier = 'free';
+    }
     return next();
   }
 
-  const now = new Date();
-  const expiry = new Date(entry.expires);
-  req.userTier = expiry > now ? (entry.productId === 'prod_SdrRYJOQdPx77F' ? 'pro' : 'premium') : 'free';
+  try {
+    const response = await axios.post(
+      'https://api.lemonsqueezy.com/v1/licenses/validate',
+      { license_key: licenseKey },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY_TEST}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    const valid = response.data?.data?.valid;
+    req.userTier = valid ? (response.data.data.license.variant_name.toLowerCase()) : "free";
+  } catch (err) {
+    console.warn("License validation failed:", err.message || err);
+    req.userTier = "free";
+  }
   next();
 }
 
-// Endpoint to test license tier
+// Test endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// Reset license
+// Reset license (optional for testing, use with caution)
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
-  res.send('✅ License reset. Refresh browser to continue.');
+  res.send('â License reset. Refresh browser to continue.');
 });
 
-// Lookup license by license key (optional)
-app.get('/lookup-license', (req, res) => {
-  const key = req.query.key;
-  if (!key) return res.status(400).send("License key required");
-  const entry = licenseStore[key];
-  if (!entry) return res.status(404).send("License not found");
-  res.json({ license: entry });
-});
-
-// OpenAI generation
-app.post("/generate", validateLicense, async (req, res) => {
+// OpenAI text generation
+app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
-  console.log("🧠 Prompt received:", userPrompt);
+  console.log("ð§  Prompt received:", userPrompt);
 
   try {
     const response = await openai.chat.completions.create({
@@ -78,15 +81,15 @@ app.post("/generate", validateLicense, async (req, res) => {
     });
 
     const output = response.choices[0].message.content.trim();
-    console.log("✅ OpenAI response:", output);
+    console.log("â OpenAI response:", output);
     res.json({ result: output });
   } catch (e) {
-    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
+    console.error("â OpenAI error:", e.response?.data || e.message || e);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
 
-// DOCX Export
+// DOCX export with logo and images
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -119,19 +122,19 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      console.error("❌ Python exec error:", err.message);
+      console.error("â Python exec error:", err.message);
       console.error(stderr);
       return res.status(500).send("DOCX generation failed.");
     }
 
     if (!fs.existsSync(outputPath)) {
-      console.error("❌ File not created:", outputPath);
+      console.error("â File not created:", outputPath);
       return res.status(500).send("DOCX file not found.");
     }
 
     const stat = fs.statSync(outputPath);
     if (stat.size < 1000) {
-      console.warn("⚠️ File created but may be invalid (too small)");
+      console.warn("â ï¸ File created but may be invalid (too small)");
     }
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
@@ -140,18 +143,10 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// Serve index
+// Serve index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Stripe success page
-app.get("/success", (req, res) => {
-  res.send(`
-    <h2>✅ Payment Successful</h2>
-    <p>Your license key has been generated. You may now return to the app and paste it in the "License Key" field to unlock full access.</p>
-  `);
-});
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`ð Server running at http://localhost:${PORT}`));

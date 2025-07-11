@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -7,22 +8,23 @@ const path = require('path');
 require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
-const { checkTier } = require('./tierControl'); // ✅ Now properly imported
+const { checkTier } = require('./tierControl');
 
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ✅ Mount Stripe webhook route
+app.use('/stripe', require('./stripeWebhook'));
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Unified license validator (Supabase + fallback)
+// ✅ Supabase-only license validator
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
-  const licenseKey = req.headers['x-license-key'];
   let tier = 'free';
 
   try {
-    // Supabase lookup
     if (email) {
       const { data } = await supabase
         .from('licenses')
@@ -37,24 +39,6 @@ async function validateLicense(req, res, next) {
         if (data[0].status === 'active' && expiresAt > now) {
           tier = data[0].license_type || 'free';
         }
-      }
-    }
-
-    // Fallback: local license file
-    if (tier === 'free' && licenseKey) {
-      const licensePath = path.join(__dirname, 'licenseStore.json');
-      if (fs.existsSync(licensePath)) {
-        const licenses = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-        const entry = licenses[licenseKey];
-        if (entry && entry.expires && new Date(entry.expires) > new Date()) {
-          tier = entry.tier || 'pro';
-        }
-      }
-
-      // Built-in test keys
-      if (licenseKey.startsWith('test_')) {
-        if (licenseKey.includes('monthly')) tier = 'pro';
-        else if (licenseKey.includes('annual')) tier = 'premium';
       }
     }
   } catch (err) {

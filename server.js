@@ -7,7 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
-const { checkTier } = require('./tierControl');
+const { checkTier } = require('./tierControl'); // ✅ Now properly imported
 
 const app = express();
 app.use(bodyParser.json());
@@ -15,16 +15,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ License validator (Supabase + fallback)
+// ✅ Unified license validator (Supabase + fallback)
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
   const licenseKey = req.headers['x-license-key'];
   let tier = 'free';
 
   try {
-    // Check Supabase by email
+    // Supabase lookup
     if (email) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('licenses')
         .select('license_type, expires_at, status')
         .eq('email', email)
@@ -40,7 +40,7 @@ async function validateLicense(req, res, next) {
       }
     }
 
-    // Fallback: local license store
+    // Fallback: local license file
     if (tier === 'free' && licenseKey) {
       const licensePath = path.join(__dirname, 'licenseStore.json');
       if (fs.existsSync(licensePath)) {
@@ -51,34 +51,32 @@ async function validateLicense(req, res, next) {
         }
       }
 
-      // Test keys override
+      // Built-in test keys
       if (licenseKey.startsWith('test_')) {
         if (licenseKey.includes('monthly')) tier = 'pro';
         else if (licenseKey.includes('annual')) tier = 'premium';
       }
     }
-
-    console.log(`👤 License validation: ${email || 'No email'} → ${tier}`);
   } catch (err) {
     console.warn("⚠️ License validation failed:", err.message);
   }
 
-  req.userTier = tier || 'free';
+  req.userTier = tier;
   next();
 }
 
-// ✅ License test route
+// ✅ License check endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Reset (dev only)
+// 🧹 Developer reset route
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 AI listing generation
+// 🤖 AI Listing Generator
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -102,7 +100,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// 📄 Word export
+// 📄 DOCX Export Endpoint
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -145,10 +143,11 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// 🌐 Serve static homepage
+// 🌍 Static frontend
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// 🚀 Launch server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

@@ -1,10 +1,24 @@
 // tierControl.js
-const { validateLicenseKey } = require('./licenseManager');
+const { validateLicenseKey, supabase } = require('./licenseManager');
 
-async function getTierFromRequest(req) {
-  const email = req.body.email || req.query.email;
-  const tier = await validateLicenseKey(email);
-  return tier;
+async function getUserTier(email) {
+  const { data, error } = await supabase
+    .from('licenses')
+    .select('license_type, status, expires_at')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error || !data || data.length === 0) return 'free';
+
+  const license = data[0];
+
+  if (license.status !== 'active') return 'free';
+
+  const now = new Date();
+  if (license.expires_at && new Date(license.expires_at) < now) return 'free';
+
+  return license.license_type || 'free';
 }
 
-module.exports = { getTierFromRequest };
+module.exports = { getUserTier };

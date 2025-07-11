@@ -1,22 +1,17 @@
-// tierControl.js
-const { validateLicenseKey } = require('./licenseManager');
-
 function checkTier(requiredTier) {
   const tiers = ['free', 'pro', 'premium'];
 
-  return async (req, res, next) => {
-    const email = req.headers['x-user-email'];
+  return (req, res, next) => {
+    const tier = req.userTier || 'free';
 
-    const tier = await validateLicenseKey(email);
-    req.userTier = tier;
-
-    const userIndex = tiers.indexOf(tier || 'free');
+    const userIndex = tiers.indexOf(tier);
     const requiredIndex = tiers.indexOf(requiredTier);
 
     if (userIndex >= requiredIndex) {
       return next();
     }
 
+    const email = req.headers['x-user-email'] || 'unknown';
     console.warn(`⛔ Access denied: ${email} is '${tier}' but needs '${requiredTier}'`);
     return res.status(403).json({ error: `Insufficient tier: required ${requiredTier}` });
   };

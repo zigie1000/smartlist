@@ -1,13 +1,10 @@
-const tiers = ["free", "pro", "premium"];
+// tierControl.js
+const { validateLicenseKey } = require('./licenseManager');
 
-function checkTier(requiredTier) {
-  return function (req, res, next) {
-    const userTier = req.userTier || "free";
-    if (tiers.indexOf(userTier) >= tiers.indexOf(requiredTier)) {
-      return next();
-    }
-    return res.status(403).json({ error: "Upgrade required" });
-  };
+async function getTierFromRequest(req) {
+  const email = req.body.email || req.query.email;
+  const tier = await validateLicenseKey(email);
+  return tier;
 }
 
-module.exports = { checkTier };
+module.exports = { getTierFromRequest };

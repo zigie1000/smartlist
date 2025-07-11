@@ -18,43 +18,48 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
-    const email = session.customer_email || (session.customer_details && session.customer_details.email);
+    const email = session.customer_email || session.customer_details?.email || '';
+    const name = session.customer_details?.name || '';
     const planId = session.client_reference_id || 'manual';
-    const planName = session.display_items ? session.display_items[0]?.custom?.name : 'Unknown';
+    const planName = session.display_items?.[0]?.custom?.name || session.metadata?.plan_name || 'Unknown';
+    const stripeCustomer = session.customer || session.customer_id || 'n/a';
 
     let licenseType = 'free';
     let durationDays = 0;
 
-    if (planName.toLowerCase().includes('monthly')) {
+    const planNameLower = planName.toLowerCase();
+    if (planNameLower.includes('monthly')) {
       licenseType = 'pro';
       durationDays = 30;
-    } else if (planName.toLowerCase().includes('yearly') || planName.toLowerCase().includes('annual')) {
+    } else if (planNameLower.includes('yearly') || planNameLower.includes('annual')) {
       licenseType = 'premium';
       durationDays = 365;
-    } else if (planName.toLowerCase().includes('test')) {
+    } else if (planNameLower.includes('test')) {
       licenseType = 'pro';
       durationDays = 1 / 24; // 1 hour
     }
 
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + durationDays);
+    expiresAt.setMinutes(expiresAt.getMinutes() + durationDays * 24 * 60); // convert days to minutes
 
     const { error } = await supabase.from('licenses').insert([{
       email,
+      name,
       license_type: licenseType,
       plan_id: planId,
       plan_name: planName,
+      stripe_customer: stripeCustomer,
       source: 'stripe',
       status: 'active',
       expires_at: expiresAt.toISOString(),
     }]);
 
     if (error) {
-      console.error('Supabase insert error:', error.message);
+      console.error('❌ Supabase insert error:', error.message);
       return res.status(500).send('Database insert error');
     }
 
-    console.log('License successfully created for', email);
+    console.log(`✅ License created for ${email} [${licenseType}] valid until ${expiresAt.toISOString()}`);
     return res.status(200).send('Success');
   }
 

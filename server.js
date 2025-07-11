@@ -7,31 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
-
-let checkTier;
-
-// ✅ Try to load real checkTier from tierControl
-try {
-  const tierModule = require('./tierControl');
-  if (typeof tierModule.checkTier === 'function') {
-    checkTier = tierModule.checkTier;
-  } else {
-    console.warn("⚠️ 'checkTier' not found in tierControl.js, using fallback.");
-  }
-} catch (err) {
-  console.warn("⚠️ Failed to load tierControl.js, using fallback:", err.message);
-}
-
-// ✅ Fallback checkTier if undefined
-if (typeof checkTier !== 'function') {
-  checkTier = (requiredTier) => (req, res, next) => {
-    const tiers = ['free', 'pro', 'premium'];
-    const userIndex = tiers.indexOf(req.userTier || 'free');
-    const requiredIndex = tiers.indexOf(requiredTier);
-    if (userIndex >= requiredIndex) return next();
-    return res.status(403).json({ error: "Insufficient license tier" });
-  };
-}
+const { checkTier } = require('./tierControl');
 
 const app = express();
 app.use(bodyParser.json());
@@ -46,7 +22,7 @@ async function validateLicense(req, res, next) {
   let tier = 'free';
 
   try {
-    // Supabase check
+    // Check Supabase by email
     if (email) {
       const { data, error } = await supabase
         .from('licenses')
@@ -64,7 +40,7 @@ async function validateLicense(req, res, next) {
       }
     }
 
-    // Local fallback if no Supabase tier upgrade
+    // Fallback: local license store
     if (tier === 'free' && licenseKey) {
       const licensePath = path.join(__dirname, 'licenseStore.json');
       if (fs.existsSync(licensePath)) {
@@ -75,32 +51,34 @@ async function validateLicense(req, res, next) {
         }
       }
 
-      // Test license keys
+      // Test keys override
       if (licenseKey.startsWith('test_')) {
         if (licenseKey.includes('monthly')) tier = 'pro';
         else if (licenseKey.includes('annual')) tier = 'premium';
       }
     }
+
+    console.log(`👤 License validation: ${email || 'No email'} → ${tier}`);
   } catch (err) {
     console.warn("⚠️ License validation failed:", err.message);
   }
 
-  req.userTier = tier;
+  req.userTier = tier || 'free';
   next();
 }
 
-// ✅ Test tier endpoint
+// ✅ License test route
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Clear cache
+// 🧹 Reset (dev only)
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 Real estate AI generation
+// 🤖 AI listing generation
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -124,7 +102,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// 📄 Export to Word (requires Pro tier)
+// 📄 Word export
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");

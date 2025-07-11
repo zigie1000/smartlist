@@ -5,13 +5,26 @@ const { exec } = require('child_process');
 const OpenAI = require('openai');
 const path = require('path');
 require('dotenv').config();
-const { checkTier } = require('./tierControl');
+
+let { checkTier } = require('./tierControl');
 
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ✅ Fallback checkTier() if not defined properly
+if (typeof checkTier !== 'function') {
+  console.warn("⚠️ 'checkTier' is not a function in tierControl.js — using fallback version.");
+  checkTier = (requiredTier) => (req, res, next) => {
+    const tiers = ['free', 'pro', 'premium'];
+    const userIndex = tiers.indexOf(req.userTier || 'free');
+    const requiredIndex = tiers.indexOf(requiredTier);
+    if (userIndex >= requiredIndex) return next();
+    return res.status(403).json({ error: "Insufficient license tier" });
+  };
+}
 
 // ✅ Stripe-based License Middleware
 async function validateLicense(req, res, next) {

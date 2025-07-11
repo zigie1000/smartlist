@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 let { checkTier } = require('./tierControl');
+const { supabase } = require('./licenseManager');
 
 const app = express();
 app.use(bodyParser.json());
@@ -14,67 +15,81 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Fallback checkTier() if not defined properly
+// ✅ Fallback checkTier
 if (typeof checkTier !== 'function') {
-  console.warn("⚠️ 'checkTier' is not a function in tierControl.js — using fallback version.");
+  console.warn("⚠️ checkTier not found or invalid — fallback being used.");
   checkTier = (requiredTier) => (req, res, next) => {
-    const tiers = ['free', 'pro', 'premium'];
-    const userIndex = tiers.indexOf(req.userTier || 'free');
-    const requiredIndex = tiers.indexOf(requiredTier);
-    if (userIndex >= requiredIndex) return next();
-    return res.status(403).json({ error: "Insufficient license tier" });
+    const levels = ['free', 'pro', 'premium'];
+    const user = levels.indexOf(req.userTier || 'free');
+    const required = levels.indexOf(requiredTier);
+    if (user >= required) return next();
+    return res.status(403).json({ error: 'Insufficient license tier' });
   };
 }
 
-// ✅ Stripe-based License Middleware
+// ✅ Modern license validation (Supabase)
 async function validateLicense(req, res, next) {
   const licenseKey = req.headers['x-license-key'];
-  if (!licenseKey) {
+  const email = req.headers['x-user-email'];
+
+  if (!licenseKey && !email) {
     req.userTier = "free";
     return next();
   }
 
-  try {
-    const licensePath = path.join(__dirname, 'licenseStore.json');
-    if (fs.existsSync(licensePath)) {
-      const licenses = JSON.parse(fs.readFileSync(licensePath, 'utf-8'));
-      const entry = licenses[licenseKey];
-      if (entry && entry.expires && new Date(entry.expires) > new Date()) {
-        req.userTier = entry.tier || "pro";
-        return next();
-      }
-    }
-  } catch (e) {
-    console.warn("⚠️ Local license check failed:", e.message);
-  }
-
-  // Test key fallback
-  if (licenseKey.startsWith('test_')) {
+  // 🎫 Test key shortcut
+  if (licenseKey?.startsWith('test_')) {
     if (licenseKey.includes('monthly')) req.userTier = 'pro';
     else if (licenseKey.includes('annual')) req.userTier = 'premium';
     else req.userTier = 'free';
-  } else {
+    return next();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('licenses')
+      .select('license_type, expires_at, status')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      console.warn("🔍 No license found — fallback to free.");
+      req.userTier = 'free';
+      return next();
+    }
+
+    const license = data[0];
+    const now = new Date();
+    if (license.status !== 'active' || new Date(license.expires_at) < now) {
+      req.userTier = 'free';
+    } else {
+      req.userTier = license.license_type || 'free';
+    }
+
+  } catch (err) {
+    console.error("❌ Supabase license check failed:", err.message);
     req.userTier = 'free';
   }
 
   next();
 }
 
-// 🧪 Test endpoint
+// 🧪 Test license
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Clear browser cache (for testing only)
+// 🧹 Cache reset
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 OpenAI Listing Generation
+// 🤖 Generate listing
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
-  console.log("🧠 Prompt received:", userPrompt);
+  console.log("🧠 Prompt:", userPrompt);
 
   try {
     const response = await openai.chat.completions.create({
@@ -87,15 +102,15 @@ app.post("/generate", async (req, res) => {
     });
 
     const output = response.choices[0].message.content.trim();
-    console.log("✅ OpenAI response:", output);
+    console.log("✅ Generated:", output);
     res.json({ result: output });
   } catch (e) {
-    console.error("❌ OpenAI error:", e.response?.data || e.message || e);
+    console.error("❌ OpenAI Error:", e.response?.data || e.message);
     res.status(500).json({ result: "Error generating listing." });
   }
 });
 
-// 📄 Word Export with Logo & Images
+// 📄 Export Word
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -107,28 +122,28 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   fs.writeFileSync(inputTextPath, content);
 
   if (logo && logo.startsWith("data:image")) {
-    const logoBase64 = logo.split(",")[1];
-    fs.writeFileSync(logoPath, Buffer.from(logoBase64, "base64"));
+    const base64 = logo.split(",")[1];
+    fs.writeFileSync(logoPath, Buffer.from(base64, "base64"));
   }
 
   const imagePaths = [];
   if (Array.isArray(images)) {
-    images.forEach((imgData, index) => {
-      if (imgData.startsWith("data:image")) {
-        const imgBase64 = imgData.split(",")[1];
-        const imgPath = `/tmp/image_${index + 1}.png`;
-        fs.writeFileSync(imgPath, Buffer.from(imgBase64, "base64"));
+    images.forEach((img, i) => {
+      if (img.startsWith("data:image")) {
+        const base64 = img.split(",")[1];
+        const imgPath = `/tmp/image_${i + 1}.png`;
+        fs.writeFileSync(imgPath, Buffer.from(base64, "base64"));
         imagePaths.push(imgPath);
       }
     });
   }
 
-  const imageArgs = imagePaths.map(p => `"${p}"`).join(" ");
-  const cmd = `python3 generate_docx.py "${inputTextPath}" "${logoPath}" ${imageArgs}`;
+  const imgArgs = imagePaths.map(p => `"${p}"`).join(" ");
+  const cmd = `python3 generate_docx.py "${inputTextPath}" "${logoPath}" ${imgArgs}`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err || !fs.existsSync(outputPath)) {
-      console.error("❌ DOCX error:", err?.message || 'Missing output');
+      console.error("❌ DOCX error:", err?.message || 'Output missing');
       return res.status(500).send("DOCX generation failed.");
     }
 
@@ -138,7 +153,7 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// 🌐 Serve Frontend
+// 🌍 Serve frontend
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

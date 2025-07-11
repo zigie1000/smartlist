@@ -21,7 +21,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const email = session.customer_email || (session.customer_details && session.customer_details.email);
     const planId = session.client_reference_id || 'manual';
 
-    // 🔍 Fetch full product metadata from line items
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
       expand: ['data.price.product']
     });
@@ -39,18 +38,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    const licenseKey = crypto.randomUUID(); // ✅ Generate unique key
+    const licenseKey = crypto.randomBytes(16).toString('hex'); // 32-char key
 
     const insertPayload = {
       email,
+      license_key: licenseKey,
       license_type: licenseType,
       plan_id: planId,
       plan_name: planName,
       source: 'stripe',
       status: 'active',
       expires_at: expiresAt.toISOString(),
-      created_at: now.toISOString(),
-      license_key: licenseKey // ✅ Store the key
+      created_at: now.toISOString()
     };
 
     const { error } = await supabase.from('licenses').insert([insertPayload]);
@@ -60,7 +59,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       return res.status(500).send('Database insert error');
     }
 
-    console.log(`✅ License inserted for ${email} as ${licenseType} with key ${licenseKey}`);
+    console.log(`✅ License inserted for ${email} as ${licenseType}, key=${licenseKey}`);
     return res.status(200).send('Success');
   }
 

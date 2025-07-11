@@ -8,17 +8,22 @@ require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
 
-let checkTier; // ✅ Don't import, define fallback below
+let checkTier;
 
-const app = express();
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// ✅ Try to load real checkTier from tierControl
+try {
+  const tierModule = require('./tierControl');
+  if (typeof tierModule.checkTier === 'function') {
+    checkTier = tierModule.checkTier;
+  } else {
+    console.warn("⚠️ 'checkTier' not found in tierControl.js, using fallback.");
+  }
+} catch (err) {
+  console.warn("⚠️ Failed to load tierControl.js, using fallback:", err.message);
+}
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// ✅ Fallback checkTier if missing
+// ✅ Fallback checkTier if undefined
 if (typeof checkTier !== 'function') {
-  console.warn("⚠️ 'checkTier' not defined properly, using fallback.");
   checkTier = (requiredTier) => (req, res, next) => {
     const tiers = ['free', 'pro', 'premium'];
     const userIndex = tiers.indexOf(req.userTier || 'free');
@@ -28,6 +33,12 @@ if (typeof checkTier !== 'function') {
   };
 }
 
+const app = express();
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 // ✅ License validator (Supabase + fallback)
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
@@ -35,7 +46,7 @@ async function validateLicense(req, res, next) {
   let tier = 'free';
 
   try {
-    // Check Supabase by email
+    // Supabase check
     if (email) {
       const { data, error } = await supabase
         .from('licenses')
@@ -53,7 +64,7 @@ async function validateLicense(req, res, next) {
       }
     }
 
-    // Fallback: local license store
+    // Local fallback if no Supabase tier upgrade
     if (tier === 'free' && licenseKey) {
       const licensePath = path.join(__dirname, 'licenseStore.json');
       if (fs.existsSync(licensePath)) {
@@ -64,7 +75,7 @@ async function validateLicense(req, res, next) {
         }
       }
 
-      // Test license key fallback
+      // Test license keys
       if (licenseKey.startsWith('test_')) {
         if (licenseKey.includes('monthly')) tier = 'pro';
         else if (licenseKey.includes('annual')) tier = 'premium';
@@ -78,18 +89,18 @@ async function validateLicense(req, res, next) {
   next();
 }
 
-// ✅ License test route
+// ✅ Test tier endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Clear license (dev only)
+// 🧹 Clear cache
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 Real estate AI
+// 🤖 Real estate AI generation
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -113,7 +124,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// 📄 Word export
+// 📄 Export to Word (requires Pro tier)
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");

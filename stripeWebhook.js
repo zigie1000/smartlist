@@ -76,7 +76,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       };
 
       saveLicenseStore(store);
-      console.log(`âï¸ License saved for ${email}: tier=${tier}, expires=${store[email].expires}`);
+      console.log(`Ã¢ÂÂÃ¯Â¸Â License saved for ${email}: tier=${tier}, expires=${store[email].expires}`);
       res.json({ received: true });
     } catch (error) {
       console.error("Failed to retrieve full session or write license:", error);

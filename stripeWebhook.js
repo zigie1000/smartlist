@@ -1,4 +1,3 @@
-// stripeWebhook.js
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('./licenseManager');
@@ -20,23 +19,22 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     const email = session.customer_email || (session.customer_details && session.customer_details.email);
     const planId = session.client_reference_id || 'manual';
-    const planName = session.display_items?.[0]?.custom?.name || 'Unknown';
 
-    let licenseType = 'free';
-    let durationDays = 0;
+    // 🔍 Fetch full product metadata from line items
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+      expand: ['data.price.product']
+    });
 
-    // Handle tier detection from name
-    const nameLower = planName.toLowerCase();
-    if (nameLower.includes('monthly')) {
-      licenseType = 'pro';
-      durationDays = 30;
-    } else if (nameLower.includes('annual') || nameLower.includes('yearly')) {
-      licenseType = 'premium';
-      durationDays = 365;
-    } else if (nameLower.includes('test')) {
-      licenseType = 'pro';
-      durationDays = 1 / 24; // 1 hour
+    const product = lineItems.data?.[0]?.price?.product;
+
+    if (!product || !product.metadata) {
+      console.error('❌ Product metadata missing in webhook');
+      return res.status(500).send('Missing metadata');
     }
+
+    const licenseType = product.metadata.tier || 'free';
+    const durationDays = parseInt(product.metadata.durationDays || '0', 10);
+    const planName = product.metadata.description || product.name || 'Unknown';
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
@@ -63,7 +61,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     return res.status(200).send('Success');
   }
 
-  res.status(200).end(); // Always return 200 for other events
+  res.status(200).end(); // Return 200 for all other events
 });
 
 module.exports = router;

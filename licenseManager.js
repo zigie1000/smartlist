@@ -1,41 +1,29 @@
 // licenseManager.js
-const axios = require('axios');
+const { createClient } = require('@supabase/supabase-js');
 
-async function validateLicenseKey(licenseKey) {
-  if (!licenseKey) return 'free';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-  // Simulate Stripe Test keys
-  if (licenseKey.startsWith('test_')) {
-    if (licenseKey.includes('monthly')) return 'pro';
-    if (licenseKey.includes('annual')) return 'premium';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function validateLicenseKey(email) {
+  if (!email) return 'free';
+
+  const { data, error } = await supabase
+    .from('licenses')
+    .select('license_type, status')
+    .eq('email', email)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error || !data || data.length === 0 || data[0].status !== 'active') {
     return 'free';
   }
 
-  // LemonSqueezy real validation (optional in test/dev)
-  try {
-    const response = await axios.post(
-      'https://api.lemonsqueezy.com/v1/licenses/validate',
-      { license_key: licenseKey },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY_TEST}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (response.data && response.data.valid) {
-      const variant = response.data.meta.variant_name.toLowerCase();
-      if (variant.includes('monthly')) return 'pro';
-      if (variant.includes('yearly') || variant.includes('annual')) return 'premium';
-    }
-
-    return 'free';
-  } catch (error) {
-    console.warn('License check failed:', error.message || error);
-    return 'free';
-  }
+  return data[0].license_type; // e.g., 'pro', 'premium'
 }
 
-module.exports = { validateLicenseKey };
+module.exports = {
+  supabase,
+  validateLicenseKey
+};

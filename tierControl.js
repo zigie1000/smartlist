@@ -1,55 +1,25 @@
-const { supabase } = require('./licenseManager');
+// tierControl.js
+const { validateLicenseKey } = require('./licenseManager');
 
-// Supabase: get user tier by email
-async function getUserTier(email) {
-  if (!email) {
-    console.warn("⚠️ No email provided for tier lookup.");
-    return 'free';
-  }
-
-  const { data, error } = await supabase
-    .from('licenses')
-    .select('license_type, status, expires_at')
-    .eq('email', email)
-    .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error('❌ Supabase error fetching license:', error.message);
-    return 'free';
-  }
-
-  if (!data || data.length === 0) {
-    console.log(`ℹ️ No license found for ${email}`);
-    return 'free';
-  }
-
-  const license = data[0];
-  const now = new Date();
-
-  if (license.status !== 'active') {
-    console.log(`🔒 License for ${email} is not active.`);
-    return 'free';
-  }
-
-  if (license.expires_at && new Date(license.expires_at) < now) {
-    console.log(`⏰ License for ${email} has expired.`);
-    return 'free';
-  }
-
-  console.log(`✅ License tier for ${email}: ${license.license_type}`);
-  return license.license_type || 'free';
-}
-
-// Middleware to check if user's tier meets requirement
 function checkTier(requiredTier) {
-  return (req, res, next) => {
-    const tiers = ['free', 'pro', 'premium'];
-    const userIndex = tiers.indexOf(req.userTier || 'free');
+  const tiers = ['free', 'pro', 'premium'];
+
+  return async (req, res, next) => {
+    const email = req.headers['x-user-email'];
+
+    const tier = await validateLicenseKey(email);
+    req.userTier = tier;
+
+    const userIndex = tiers.indexOf(tier || 'free');
     const requiredIndex = tiers.indexOf(requiredTier);
-    if (userIndex >= requiredIndex) return next();
-    return res.status(403).json({ error: "Insufficient license tier" });
+
+    if (userIndex >= requiredIndex) {
+      return next();
+    }
+
+    console.warn(`⛔ Access denied: ${email} is '${tier}' but needs '${requiredTier}'`);
+    return res.status(403).json({ error: `Insufficient tier: required ${requiredTier}` });
   };
 }
 
-module.exports = { getUserTier, checkTier };
+module.exports = { checkTier };

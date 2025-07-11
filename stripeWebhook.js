@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('./licenseManager');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const crypto = require('crypto');
 
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -38,6 +39,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    const licenseKey = crypto.randomUUID(); // ✅ Generate unique key
 
     const insertPayload = {
       email,
@@ -47,7 +49,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       source: 'stripe',
       status: 'active',
       expires_at: expiresAt.toISOString(),
-      created_at: now.toISOString()
+      created_at: now.toISOString(),
+      license_key: licenseKey // ✅ Store the key
     };
 
     const { error } = await supabase.from('licenses').insert([insertPayload]);
@@ -57,11 +60,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       return res.status(500).send('Database insert error');
     }
 
-    console.log(`✅ License inserted for ${email} as ${licenseType}`);
+    console.log(`✅ License inserted for ${email} as ${licenseType} with key ${licenseKey}`);
     return res.status(200).send('Success');
   }
 
-  res.status(200).end(); // Return 200 for all other events
+  res.status(200).end();
 });
 
 module.exports = router;

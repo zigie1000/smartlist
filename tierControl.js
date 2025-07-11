@@ -1,7 +1,7 @@
 // tierControl.js
 const { supabase } = require('./licenseManager');
 
-// Get the user's tier based on most recent valid license by email
+// 🔍 1. Function to get user's tier
 async function getUserTier(email) {
   if (!email) {
     console.warn("⚠️ No email provided for tier lookup.");
@@ -42,4 +42,18 @@ async function getUserTier(email) {
   return license.license_type || 'free';
 }
 
-module.exports = { getUserTier };
+// ✅ 2. Middleware to check required tier
+function checkTier(requiredTier) {
+  return (req, res, next) => {
+    const tiers = ['free', 'pro', 'premium'];
+    const userIndex = tiers.indexOf(req.userTier || 'free');
+    const requiredIndex = tiers.indexOf(requiredTier);
+    if (userIndex >= requiredIndex) return next();
+    return res.status(403).json({ error: "Insufficient license tier" });
+  };
+}
+
+module.exports = {
+  getUserTier,
+  checkTier
+};

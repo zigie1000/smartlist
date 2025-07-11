@@ -7,7 +7,8 @@ const path = require('path');
 require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
-let { checkTier } = require('./tierControl');
+
+let checkTier; // ✅ Don't import, define fallback below
 
 const app = express();
 app.use(bodyParser.json());
@@ -27,14 +28,14 @@ if (typeof checkTier !== 'function') {
   };
 }
 
-// ✅ Enhanced license validator (Supabase + fallback)
+// ✅ License validator (Supabase + fallback)
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
   const licenseKey = req.headers['x-license-key'];
   let tier = 'free';
 
   try {
-    // Supabase check by email
+    // Check Supabase by email
     if (email) {
       const { data, error } = await supabase
         .from('licenses')
@@ -52,7 +53,7 @@ async function validateLicense(req, res, next) {
       }
     }
 
-    // Fallback: JSON license store
+    // Fallback: local license store
     if (tier === 'free' && licenseKey) {
       const licensePath = path.join(__dirname, 'licenseStore.json');
       if (fs.existsSync(licensePath)) {
@@ -63,7 +64,7 @@ async function validateLicense(req, res, next) {
         }
       }
 
-      // Fallback test keys
+      // Test license key fallback
       if (licenseKey.startsWith('test_')) {
         if (licenseKey.includes('monthly')) tier = 'pro';
         else if (licenseKey.includes('annual')) tier = 'premium';
@@ -77,18 +78,18 @@ async function validateLicense(req, res, next) {
   next();
 }
 
-// ✅ Test endpoint
+// ✅ License test route
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Clear cache (testing only)
+// 🧹 Clear license (dev only)
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 AI Listing Generation
+// 🤖 Real estate AI
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -112,7 +113,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// 📄 Word Export with Logo & Images
+// 📄 Word export
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -155,7 +156,7 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// 🌐 Serve frontend
+// 🌐 Serve static homepage
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

@@ -1,4 +1,3 @@
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -13,15 +12,19 @@ const { checkTier } = require('./tierControl');
 
 const app = express();
 
+// Mount static frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Stripe Webhook requires raw body
 app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
 
+// JSON body parser for other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Supabase-only license validator
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
   let tier = 'free';
@@ -51,15 +54,18 @@ async function validateLicense(req, res, next) {
   next();
 }
 
+// License check endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
+// Developer reset route
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
+// OpenAI listing generator
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -83,6 +89,7 @@ app.post("/generate", async (req, res) => {
   }
 });
 
+// DOCX Export Endpoint
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -125,6 +132,7 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
+// Stripe backup license insert (optional fallback)
 app.post('/stripe/update-license', async (req, res) => {
   const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
 
@@ -154,9 +162,11 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 });
 
+// Frontend index route
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

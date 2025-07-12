@@ -70,11 +70,14 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       stripe_product: stripeProductId
     };
 
-    const { error } = await supabase.from('licenses').insert([insertPayload]);
+    // ✅ Fix: use upsert to avoid duplicate key constraint violation
+    const { error } = await supabase.from('licenses').upsert([insertPayload], {
+      onConflict: ['email']
+    });
 
     if (error) {
-      console.error('❌ Supabase insert error:', error.message);
-      return res.status(500).send('Database insert error');
+      console.error('❌ Supabase upsert error:', error.message);
+      return res.status(500).send('Database upsert error');
     }
 
     try {
@@ -89,7 +92,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       console.warn('⚠️ Failed to call /stripe/update-license backup:', err.message);
     }
 
-    console.log(`✅ License inserted for ${email} → ${licenseType} until ${expiresAt.toISOString()}`);
+    console.log(`✅ License inserted or updated for ${email} → ${licenseType} until ${expiresAt.toISOString()}`);
     return res.status(200).send('Success');
   }
 

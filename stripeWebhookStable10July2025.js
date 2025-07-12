@@ -1,90 +1,77 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-
+const { supabase } = require('./licenseManager');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-const LICENSE_STORE = path.join(__dirname, 'licenseStore.json');
+const crypto = require('crypto');
+const axios = require('axios');
 
-function loadLicenseStore() {
-  try {
-    return JSON.parse(fs.readFileSync(LICENSE_STORE, 'utf-8'));
-  } catch (e) {
-    return {};
-  }
-}
-
-function saveLicenseStore(data) {
-  fs.writeFileSync(LICENSE_STORE, JSON.stringify(data, null, 2));
-}
-
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
+// ✅ Stripe webhook endpoint at /webhook
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('❌ Stripe webhook signature error:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const email = session.customer_email;
-    const sessionId = session.id;
+    const email =
+      session.customer_email ||
+      (session.customer_details && session.customer_details.email);
+    const planId = session.client_reference_id || 'manual';
+    const stripeCustomer = session.customer;
 
-    if (!email || !sessionId) {
-      console.warn("Missing email or session ID in Stripe session.");
-      return res.status(400).send("Missing data");
-    }
+    let productMetadata = {};
+    let stripeProductId = null;
 
     try {
-      const fullSession = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['line_items']
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+        expand: ['data.price.product'],
       });
 
-      const line = fullSession.line_items.data[0];
-      const productId = line.price.product;
-
-      const monthlyId = process.env.STRIPE_MONTHLY_PRODUCT;
-      const yearlyId = process.env.STRIPE_YEARLY_PRODUCT;
-
-      let duration, tier;
-
-      if (productId === monthlyId) {
-        duration = 'month';
-        tier = 'pro';
-      } else if (productId === yearlyId) {
-        duration = 'year';
-        tier = 'premium';
-      } else {
-        console.warn("Unknown product ID:", productId);
-        return res.status(400).send("Unknown product");
+      if (lineItems.data.length > 0) {
+        const product = lineItems.data[0].price.product;
+        stripeProductId = product.id;
+        productMetadata = product.metadata || {};
       }
-
-      const expiration = new Date();
-      if (duration === 'year') expiration.setFullYear(expiration.getFullYear() + 1);
-      else expiration.setMonth(expiration.getMonth() + 1);
-
-      const store = loadLicenseStore();
-      store[email] = {
-        expires: expiration.toISOString(),
-        tier
-      };
-
-      saveLicenseStore(store);
-      console.log(`âï¸ License saved for ${email}: tier=${tier}, expires=${store[email].expires}`);
-      res.json({ received: true });
-    } catch (error) {
-      console.error("Failed to retrieve full session or write license:", error);
-      res.status(500).send("Internal error");
+    } catch (err) {
+      console.error('⚠️ Stripe product metadata fetch error:', err.message);
     }
-  } else {
-    res.json({ received: true });
+
+    const licenseType = productMetadata.license_type || 'pro';
+
+    try {
+      const { error } = await supabase
+        .from('licenses')
+        .insert([
+          {
+            email,
+            plan: planId,
+            license_type: licenseType,
+            stripe_customer: stripeCustomer,
+            stripe_product: stripeProductId,
+            status: 'active',
+            is_active: true,
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          },
+        ]);
+
+      if (error) throw error;
+      console.log(`✅ Stripe license stored for ${email}`);
+    } catch (err) {
+      console.error('❌ Supabase license insert error:', err.message);
+    }
   }
+
+  res.status(200).send('✅ Webhook received.');
 });
 
 module.exports = router;

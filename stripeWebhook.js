@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 
 // Stripe webhook endpoint
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 

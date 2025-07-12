@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('./licenseManager');
@@ -7,7 +6,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 
 // Stripe webhook endpoint
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -23,11 +22,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const email = session.customer_email || (session.customer_details && session.customer_details.email);
     const planId = session.client_reference_id || 'manual';
     const stripeCustomer = session.customer;
-
-    if (!email) {
-      console.error("❌ No email in session. Cannot create license.");
-      return res.status(400).send('Missing email');
-    }
 
     let productMetadata = {};
     let stripeProductId = null;
@@ -80,7 +74,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
     if (error) {
       console.error('❌ Supabase insert error:', error.message);
-      console.error('🔍 Payload that failed:', insertPayload);
       return res.status(500).send('Database insert error');
     }
 

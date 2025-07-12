@@ -11,11 +11,12 @@ const { supabase } = require('./licenseManager');
 const { checkTier } = require('./tierControl');
 
 const app = express();
-app.use(bodyParser.json());
+
+// ✅ Mount static frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Fix: Mount Stripe webhook on root to match /webhook route
-app.use('/', require('./stripeWebhook'));
+// ✅ Mount Stripe Webhook exactly at /webhook to match Stripe dashboard
+app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -157,11 +158,11 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 });
 
-// 🌍 Static frontend
+// 🌍 Serve frontend
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 🚀 Launch server
+// 🚀 Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

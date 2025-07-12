@@ -28,7 +28,7 @@ async function validateLicense(req, res, next) {
     if (email) {
       const { data } = await supabase
         .from('licenses')
-        .select('license_type, expires_at, status')
+        .select('license_type, plan, name, expires_at, status')
         .eq('email', email)
         .order('created_at', { ascending: false })
         .limit(1);
@@ -39,6 +39,12 @@ async function validateLicense(req, res, next) {
         if (data[0].status === 'active' && expiresAt > now) {
           tier = data[0].license_type || 'free';
         }
+
+        console.log(`✅ License verified for ${email}:
+  • Tier: ${tier}
+  • Plan: ${data[0].plan || 'N/A'}
+  • Name: ${data[0].name || 'N/A'}
+  • Expires at: ${data[0].expires_at}`);
       }
     }
   } catch (err) {

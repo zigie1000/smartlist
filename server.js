@@ -14,8 +14,8 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Mount Stripe webhook route
-app.use('/stripe', require('./stripeWebhook'));
+// ✅ Fix: Mount Stripe webhook on root to match /webhook route
+app.use('/', require('./stripeWebhook'));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

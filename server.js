@@ -1,10 +1,10 @@
-// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const { exec } = require('child_process');
 const OpenAI = require('openai');
 const path = require('path');
+const axios = require('axios');
 require('dotenv').config();
 
 const { supabase } = require('./licenseManager');
@@ -28,7 +28,7 @@ async function validateLicense(req, res, next) {
     if (email) {
       const { data } = await supabase
         .from('licenses')
-        .select('license_type, plan, name, expires_at, status')
+        .select('license_type, expires_at, status')
         .eq('email', email)
         .order('created_at', { ascending: false })
         .limit(1);
@@ -39,12 +39,6 @@ async function validateLicense(req, res, next) {
         if (data[0].status === 'active' && expiresAt > now) {
           tier = data[0].license_type || 'free';
         }
-
-        console.log(`✅ License verified for ${email}:
-  • Tier: ${tier}
-  • Plan: ${data[0].plan || 'N/A'}
-  • Name: ${data[0].name || 'N/A'}
-  • Expires at: ${data[0].expires_at}`);
       }
     }
   } catch (err) {
@@ -131,6 +125,36 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=PromptAgentHQ_Listing.docx");
     res.sendFile(path.resolve(outputPath));
   });
+});
+
+// ✅ Stripe metadata-based license update
+app.post('/stripe/update-license', async (req, res) => {
+  const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
+
+  if (!email || !plan || !license_type || !stripe_customer || !stripe_product) {
+    return res.status(400).json({ error: "Missing required license fields" });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('licenses')
+      .insert([{
+        email,
+        plan,
+        license_type,
+        stripe_customer,
+        stripe_product,
+        status: 'active',
+        is_active: true,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      }]);
+
+    if (error) throw error;
+    res.status(200).json({ message: '✅ License saved in Supabase' });
+  } catch (err) {
+    console.error("❌ Supabase insert failed:", err.message);
+    res.status(500).json({ error: 'Failed to update license' });
+  }
 });
 
 // 🌍 Static frontend

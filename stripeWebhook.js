@@ -5,6 +5,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 const axios = require('axios');
 
+// Stripe webhook endpoint
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
@@ -59,7 +60,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       plan: planId,
       name: planName,
       status: 'active',
-      is_active: true,
       expires_at: expiresAt.toISOString(),
       created_at: now.toISOString(),
       stripe_customer: stripeCustomer,

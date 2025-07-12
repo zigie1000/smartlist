@@ -35,9 +35,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       stripeProductId = product?.id;
       productMetadata = product?.metadata || {};
 
+      console.log('📦 Stripe product ID:', stripeProductId);
+      console.log('📄 Stripe product metadata:', productMetadata);
+
       if (!productMetadata.tier || !productMetadata.durationDays) {
-        console.error('❌ Required metadata missing in product:', productMetadata);
-        return res.status(500).send('Missing product metadata');
+        console.warn('⚠️ Metadata missing or incomplete. Applying fallback values.');
+        productMetadata.tier = productMetadata.tier || 'default';
+        productMetadata.durationDays = productMetadata.durationDays || '30';
       }
 
     } catch (err) {
@@ -46,7 +50,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     }
 
     const licenseType = productMetadata.tier;
-    const durationDays = parseInt(productMetadata.durationDays, 10);
+    const durationDays = parseInt(productMetadata.durationDays, 10) || 30;
     const planName = productMetadata.description || 'Unnamed Plan';
 
     const now = new Date();

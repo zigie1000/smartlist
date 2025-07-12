@@ -3,7 +3,6 @@ const router = express.Router();
 const { supabase } = require('./licenseManager');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
-const axios = require('axios');
 
 // Stripe webhook endpoint
 router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -70,26 +69,11 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       stripe_product: stripeProductId
     };
 
-    // ✅ Fix: use upsert to avoid duplicate key constraint violation
-    const { error } = await supabase.from('licenses').upsert([insertPayload], {
-      onConflict: ['email']
-    });
+    const { error } = await supabase.from('licenses').upsert([insertPayload], { onConflict: ['email'] });
 
     if (error) {
-      console.error('❌ Supabase upsert error:', error.message);
-      return res.status(500).send('Database upsert error');
-    }
-
-    try {
-      await axios.post(`${process.env.SITE_URL}/stripe/update-license`, {
-        email,
-        plan: planId,
-        license_type: licenseType,
-        stripe_customer: stripeCustomer,
-        stripe_product: stripeProductId
-      });
-    } catch (err) {
-      console.warn('⚠️ Failed to call /stripe/update-license backup:', err.message);
+      console.error('❌ Supabase insert/upsert error:', error.message);
+      return res.status(500).send('Database insert error');
     }
 
     console.log(`✅ License inserted or updated for ${email} → ${licenseType} until ${expiresAt.toISOString()}`);

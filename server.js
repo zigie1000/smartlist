@@ -15,8 +15,12 @@ const app = express();
 // ✅ Mount static frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ✅ Mount Stripe Webhook exactly at /webhook to match Stripe dashboard
+// ✅ Stripe Webhook must come BEFORE body parsing
 app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
+
+// ✅ Add JSON body parser for all other routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

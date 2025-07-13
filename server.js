@@ -201,6 +201,35 @@ app.post('/stripe/update-license', async (req, res) => {
 });
 
 // 🌍 Serve frontend
+
+// ✅ License validation endpoint (patch)
+app.get('/validate-license', async (req, res) => {
+  const licenseKey = req.headers['x-license-key'];
+
+  if (!licenseKey) {
+    return res.status(400).json({ error: 'No license key provided' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('licenses')
+      .select('license_type')
+      .eq('license_key', licenseKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return res.status(403).json({ tier: 'free' });
+    }
+
+    return res.json({ tier: data.license_type || 'free' });
+  } catch (err) {
+    console.error('License validation error:', err.message);
+    return res.status(500).json({ tier: 'free' });
+  }
+});
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

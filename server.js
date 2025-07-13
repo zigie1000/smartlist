@@ -35,13 +35,14 @@ async function validateLicense(req, res, next) {
         .from('licenses')
         .select('license_type, expires_at, status')
         .eq('email', email)
-        .order('created_at', { ascending: false })
+        .eq('status', 'active')
+        .order('expires_at', { ascending: false })
         .limit(1);
 
       if (data && data[0]) {
         const now = new Date();
         const expiresAt = new Date(data[0].expires_at);
-        if (data[0].status === 'active' && expiresAt > now) {
+        if (expiresAt > now) {
           tier = data[0].license_type || 'free';
         }
       }
@@ -132,7 +133,7 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// ✅ Stripe metadata-based license insert/update
+// ✅ Stripe metadata-based license update
 app.post('/stripe/update-license', async (req, res) => {
   const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
 
@@ -141,95 +142,57 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 
   try {
-    const { data, error: fetchError } = await supabase
+    const { error } = await supabase
       .from('licenses')
-      .select('id')
-      .eq('email', email)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .insert([{
+        email,
+        plan,
+        license_type,
+        stripe_customer,
+        stripe_product,
+        status: 'active',
+        is_active: true,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }]);
 
-    if (fetchError) throw fetchError;
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-    if (data && data.length > 0) {
-      // 🔁 Update
-      const { error: updateError } = await supabase
-        .from('licenses')
-        .update({
-          plan,
-          license_type,
-          stripe_customer,
-          stripe_product,
-          status: 'active',
-          is_active: true,
-          expires_at: expiresAt.toISOString(),
-          updated_at: now.toISOString()
-        })
-        .eq('email', email);
-
-      if (updateError) throw updateError;
-
-      console.log(`🔁 License updated for ${email}`);
-      return res.status(200).json({ message: '✅ License updated' });
-    } else {
-      // 🆕 Insert
-      const { error: insertError } = await supabase
-        .from('licenses')
-        .insert([{
-          email,
-          plan,
-          license_type,
-          stripe_customer,
-          stripe_product,
-          status: 'active',
-          is_active: true,
-          expires_at: expiresAt.toISOString(),
-          created_at: now.toISOString()
-        }]);
-
-      if (insertError) throw insertError;
-
-      console.log(`🆕 License inserted for ${email}`);
-      return res.status(200).json({ message: '✅ License inserted' });
-    }
+    if (error) throw error;
+    res.status(200).json({ message: '✅ License saved in Supabase' });
   } catch (err) {
-    console.error("❌ Supabase insert/update failed:", err.message);
-    return res.status(500).json({ error: 'Database operation failed' });
+    console.error("❌ Supabase insert failed:", err.message);
+    res.status(500).json({ error: 'Failed to update license' });
+  }
+});
+
+// Duplicate update-license route for updating
+app.post('/stripe/update-license', async (req, res) => {
+  const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
+
+  try {
+    const { error } = await supabase
+      .from('licenses')
+      .update({
+        plan,
+        license_type,
+        stripe_customer,
+        stripe_product,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', email);
+
+    if (error) {
+      console.error('❌ Supabase update-license error:', error.message);
+      return res.status(500).send('Supabase update error');
+    }
+
+    console.log(`🔁 License updated for ${email}`);
+    return res.status(200).send('License updated');
+  } catch (err) {
+    console.error('❌ update-license route failed:', err.message);
+    return res.status(500).send('Internal server error');
   }
 });
 
 // 🌍 Serve frontend
-
-// ✅ License validation endpoint (patch)
-app.get('/validate-license', async (req, res) => {
-  const licenseKey = req.headers['x-license-key'];
-
-  if (!licenseKey) {
-    return res.status(400).json({ error: 'No license key provided' });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('licenses')
-      .select('license_type')
-      .eq('license_key', licenseKey)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error || !data) {
-      return res.status(403).json({ tier: 'free' });
-    }
-
-    return res.json({ tier: data.license_type || 'free' });
-  } catch (err) {
-    console.error('License validation error:', err.message);
-    return res.status(500).json({ tier: 'free' });
-  }
-});
-
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

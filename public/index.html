@@ -225,6 +225,7 @@ async function checkTierAndAdjustUI() {
 
   await validateLicense(licenseKey);
   updateFeatureAccess();
+  removeUpgradePrompt(); // Clear existing prompts first
 
   if (window.userTier === "free") {
     const upgradePrompt = document.createElement("div");
@@ -234,8 +235,6 @@ async function checkTierAndAdjustUI() {
       <a href="https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400" target="_blank">Upgrade Yearly – $50</a></p>`;
     upgradePrompt.style.cssText = "background:#ffeeee;padding:15px;border:1px solid #cc0000;border-radius:8px;";
     document.body.prepend(upgradePrompt);
-  } else {
-    removeUpgradePrompt();
   }
 }
 

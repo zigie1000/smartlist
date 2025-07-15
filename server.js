@@ -7,7 +7,7 @@ const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
 
-const { supabase } = require('./licenseManager');
+const { supabase, getTierFromEmail } = require('./db.js');
 const { checkTier } = require('./tierControl');
 
 const app = express();
@@ -31,20 +31,13 @@ async function validateLicense(req, res, next) {
 
   try {
     if (email) {
-      const { data } = await supabase
-        .from('licenses')
-        .select('license_type, expires_at, status')
-        .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (data && data[0]) {
-        const now = new Date();
-        const expiresAt = new Date(data[0].expires_at);
-        if (data[0].status === 'active' && expiresAt > now) {
-          tier = data[0].license_type || 'free';
-        }
-      }
+      tier = await getTierFromEmail(email); // Use db.js function
+    }
+    // Optionally check license_key if provided
+    const licenseKey = req.headers['x-license-key'];
+    if (licenseKey && licenseKey !== tier) {
+      const keyTier = await getTierFromEmail(licenseKey); // Fallback to email-based tier
+      if (keyTier !== 'free') tier = keyTier;
     }
   } catch (err) {
     console.warn("⚠️ License validation failed:", err.message);
@@ -60,28 +53,17 @@ app.get('/validate-license', validateLicense, (req, res) => {
 });
 
 // ✅ Resolve license endpoint
-app.get('/resolve-license', validateLicense, async (req, res) => {
+app.get('/resolve-license', async (req, res) => {
   const email = req.headers['x-user-email'];
   if (!email) {
+    console.log("No email provided for license resolution");
     return res.json({ licenseKey: null });
   }
 
   try {
-    const { data } = await supabase
-      .from('licenses')
-      .select('license_type')
-      .eq('email', email)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (data && data.license_type) {
-      console.log(`Resolved license for ${email}: ${data.license_type}`);
-      res.json({ licenseKey: data.license_type });
-    } else {
-      console.log(`No license found for ${email}`);
-      res.json({ licenseKey: null });
-    }
+    const tier = await getTierFromEmail(email);
+    console.log(`Resolved tier for ${email}: ${tier}`);
+    res.json({ licenseKey: tier }); // Return tier as licenseKey for client compatibility
   } catch (err) {
     console.warn("⚠️ License resolution failed:", err.message);
     res.json({ licenseKey: null });

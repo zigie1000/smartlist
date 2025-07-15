@@ -1,3 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>PromptAgentHQ | Real Estate Listing Generator</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 40px 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 750px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.08);
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    textarea { height: 100px; }
+    button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 10px 8px 0 0;
+    }
+    button:hover { background: #45a049; }
+    #output-container {
+      display: none;
+      margin-top: 30px;
+      background: #f9f9f9;
+      border-left: 4px solid #4CAF50;
+      padding: 20px;
+      white-space: pre-wrap;
+      font-size: 15px;
+      border-radius: 6px;
+    }
+    #export-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #char-count {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #555;
+    }
+    #image-preview img,
+    #logo-preview img {
+      max-height: 100px;
+      margin-right: 10px;
+      border-radius: 6px;
+    }
+    .export-images img {
+      display: block;
+      margin: 0 auto 10px;
+      max-width: 300px;
+      border-radius: 8px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+<h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
+<label>Listing Type</label>
+<select id="type">
+<option value="">Select Type</option>
+<option value="Apartment">Apartment</option>
+<option value="House">House</option>
+<option value="Townhouse">Townhouse</option>
+<option value="Penthouse">Penthouse</option>
+<option value="Studio">Studio</option>
+</select>
+<label>Status</label>
+<select id="status">
+<option value="">Select Status</option>
+<option value="For Sale">For Sale</option>
+<option value="For Rent">For Rent</option>
+</select>
+<label>Location</label>
+<input id="location" placeholder="e.g. Sea Point, Cape Town" type="text"/>
+<label>Bedrooms</label>
+<input id="bedrooms" min="0" placeholder="e.g. 3" type="number"/>
+<label>Bathrooms</label>
+<input id="bathrooms" min="0" placeholder="e.g. 2" type="number"/>
+<label>Ensuite Bathrooms</label>
+<input id="ensuites" min="0" placeholder="e.g. 1" type="number"/>
+<label>Garages</label>
+<input id="garages" min="0" placeholder="e.g. 2" type="number"/>
+<label>Living Space Area (m²)</label>
+<input id="interior" min="0" placeholder="e.g. 120" type="number"/>
+<label>Lot Size / Erf Size (m²)</label>
+<input id="lot" min="0" placeholder="e.g. 500" type="number"/>
+<label>Additional Features / Notes</label>
+<textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
+<label>Agency/Agent Details</label>
+<textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
+<label>Upload Logo Image (Max 2MB)</label>
+<input accept="image/*" id="logoFile" type="file"/>
+<div id="logo-preview"></div>
+<label>Upload Property Images (Max 3, 2MB each)</label>
+<input accept="image/*" id="images" multiple="" type="file"/>
+<div id="image-preview"></div>
+<label>License Key</label>
+<input id="licenseInput" placeholder="Paste license key here" style="margin-bottom: 10px;" />
+<button onclick="saveLicense()">Apply License</button>
+<button onclick="generate()">Generate</button>
+<div id="output-container">
+<h3>Generated Listing:</h3>
+<div id="result"></div>
+<div id="char-count"></div>
+<div id="export-buttons">
+<button onclick="copyToClipboard()">Copy</button>
+<button class="pro-feature" onclick="exportToWord()">Export Word</button>
+<button class="pro-feature" onclick="exportToPDF()">Export PDF</button>
+<button class="pro-feature" onclick="exportToText()">Export Text</button>
+<button onclick="clearAll()">Clear</button>
+</div>
+<label>Enhance or Correct Listing (Optional)</label>
+<textarea id="enhance" placeholder="e.g. Fix spelling, add more detail about garden..."></textarea>
+<button class="pro-feature" onclick="applyEnhancement()">Apply Enhancement</button>
+</div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
 <script src="imageHandler.js"></script>
@@ -386,3 +531,5 @@ document.getElementById("images").addEventListener("change", function () {
 
 window.addEventListener("load", checkTierAndAdjustUI);
 </script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
+<script src="imageHandler.js"></script>
+<script>
+window.logoImageBase64 = "";
+window.propertyImagesBase64 = [];
+window.userTier = "free";
+
+function getTimestampFilename(base, extension) {
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, '-');
+  return `${base}_${timestamp}.${extension}`;
+}
+
+function deleteLogo() {
+  document.getElementById('logoFile').value = "";
+  document.getElementById('logo-preview').innerHTML = "";
+  window.logoImageBase64 = "";
+}
+
+function deleteImage(button) {
+  const container = button.parentElement;
+  const imgSrc = container.querySelector('img').src;
+  window.propertyImagesBase64 = window.propertyImagesBase64.filter(src => src !== imgSrc);
+  container.remove();
+}
+
+function removeUpgradePrompt() {
+  const prompt = document.querySelector("body > div");
+  if (prompt && prompt.innerHTML.includes("Upgrade to Pro")) {
+    prompt.remove();
+  }
+}
+
+async function validateLicense(key) {
+  try {
+    const res = await fetch("/validate-license", {
+      headers: { "x-license-key": key || "" }
+    });
+    const data = await res.json();
+    if (data.valid) {
+      window.userTier = data.tier || "free";
+      console.log("Tier set to:", window.userTier);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn("License validation failed:", e);
+    window.userTier = "free";
+    return false;
+  }
+}
+
+async function resolveLicense() {
+  try {
+    const res = await fetch("/resolve-license");
+    const data = await res.json();
+    if (data.licenseKey) {
+      localStorage.setItem("licenseKey", data.licenseKey);
+      console.log("LicenseKey from backend:", data.licenseKey);
+      return data.licenseKey;
+    }
+    return null;
+  } catch (e) {
+    console.warn("License resolution failed:", e);
+    return null;
+  }
+}
+
+async function checkTierAndAdjustUI() {
+  let licenseKey = localStorage.getItem("licenseKey");
+  console.log("LicenseKey from localStorage:", licenseKey);
+
+  if (!licenseKey) {
+    licenseKey = await resolveLicense();
+  }
+
+  await validateLicense(licenseKey);
+  updateFeatureAccess();
+
+  if (window.userTier === "free") {
+    const upgradePrompt = document.createElement("div");
+    upgradePrompt.innerHTML = `
+      <p><strong>Upgrade to Pro or Premium for full access.</strong><br>
+      <a href="https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401" target="_blank">Upgrade Monthly – $5</a> |
+      <a href="https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400" target="_blank">Upgrade Yearly – $50</a></p>`;
+    upgradePrompt.style.background = "#ffeeee";
+    upgradePrompt.style.padding = "15px";
+    upgradePrompt.style.border = "1px solid #cc0000";
+    upgradePrompt.style.borderRadius = "8px";
+    document.body.prepend(upgradePrompt);
+  } else {
+    removeUpgradePrompt();
+  }
+}
+
+function updateFeatureAccess() {
+  document.querySelectorAll(".pro-feature").forEach(btn => {
+    btn.disabled = window.userTier === "free";
+    btn.style.opacity = window.userTier === "free" ? 0.5 : 1;
+    btn.onclick = window.userTier === "free" ? () => alert("🚫 Upgrade to Pro to use this feature.") : null;
+  });
+
+  document.querySelectorAll(".premium-feature").forEach(btn => {
+    btn.disabled = window.userTier !== "premium";
+    btn.style.opacity = window.userTier !== "premium" ? 0.5 : 1;
+    btn.onclick = window.userTier !== "premium" ? () => alert("🚫 Upgrade to Premium to use this feature.") : null;
+  });
+}
+
+async function saveLicense() {
+  const key = document.getElementById("licenseInput").value.trim();
+  if (!key) return alert("❌ Please enter a license key.");
+
+  localStorage.setItem("licenseKey", key);
+  console.log("LicenseKey saved to localStorage:", key);
+
+  const valid = await validateLicense(key);
+  if (valid) {
+    updateFeatureAccess();
+    removeUpgradePrompt();
+    alert("✅ License saved. Access updated.");
+  } else {
+    window.userTier = "free";
+    updateFeatureAccess();
+    alert("❌ Invalid or failed license check.");
+  }
+}
+
+async function generate() {
+  const type = document.getElementById("type").value;
+  const status = document.getElementById("status").value;
+  const location = document.getElementById("location").value.trim();
+  const bedrooms = document.getElementById("bedrooms").value;
+  const bathrooms = document.getElementById("bathrooms").value;
+  const ensuites = document.getElementById("ensuites").value;
+  const garages = document.getElementById("garages").value;
+  const interior = document.getElementById("interior").value;
+  const lot = document.getElementById("lot").value;
+  const notes = document.getElementById("notes").value.trim().replace(/\[.*\]/g, '').trim();
+  const agent = document.getElementById("agent").value.trim();
+
+  if (!type || !status || !location) {
+    alert("Please fill in at least type, status, and location.");
+    return;
+  }
+
+  const title = `${type} ${status.toLowerCase()} in ${location}`;
+  const prompt = `Create a professional real estate listing for a property with the following details. 
+Start with an eye-catching title using emojis. Then write a stylish, appealing paragraph. 
+Finish with a bulleted list using emojis — but only include bullets for fields that have values (i.e., skip empty fields). Avoid repeating anything already covered in the paragraph.
+
+Property Details:
+- Type: ${type}
+- Status: ${status}
+- Location: ${location}
+- Bedrooms: ${bedrooms}
+- Bathrooms: ${bathrooms}
+- Ensuites: ${ensuites}
+- Garages: ${garages}
+- Living Space: ${interior} m²
+- Lot Size: ${lot} m²
+- Additional Features: ${notes}
+- Agent: ${agent}`.trim();
+
+  try {
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    const output = data.result || "Something went wrong.";
+    document.getElementById("result").innerHTML = output;
+    document.getElementById("char-count").textContent = `Character count: ${output.length}`;
+    document.getElementById("output-container").style.display = 'block';
+    document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+  } catch (e) {
+    alert("❌ Failed to generate listing.");
+  }
+}
+
+async function applyEnhancement() {
+  if (window.userTier === "free") return alert("🚫 Upgrade to Pro to use this feature.");
+  const enhancement = document.getElementById("enhance").value.trim();
+  if (!enhancement) return alert("Please enter an enhancement.");
+  const original = document.getElementById("result").textContent;
+  const newPrompt = `Please improve the following real estate listing using this enhancement: "${enhancement}". Maintain the exact structure — keep the title, paragraph body, and bullet list in the same format. Do not restructure the layout:\n\n${original}`;
+
+  try {
+    const res = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: newPrompt })
+    });
+    const data = await res.json();
+    const updated = data.result || original;
+    document.getElementById("result").textContent = updated;
+    document.getElementById("char-count").textContent = `Character count: ${updated.length}`;
+    document.getElementById("enhance").value = "";
+    document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
+  } catch (e) {
+    alert("❌ Failed to apply enhancement.");
+  }
+}
+
+function copyToClipboard() {
+  const text = document.getElementById("result").textContent;
+  navigator.clipboard.writeText(text).then(() => alert("✅ Copied to clipboard!"));
+}
+
+function exportToText() {
+  if (window.userTier === "free") return alert("🚫 Upgrade to Pro to use this feature.");
+  const text = document.getElementById("result").textContent;
+  const cleaned = text.replace(/Logo:.*(\n)?/, '');
+  const blob = new Blob([cleaned], { type: "application/octet-stream" });
+  triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+}
+
+function exportToWord() {
+  if (window.userTier === "free") return alert("🚫 Upgrade to Pro to use this feature.");
+  const text = document.getElementById("result").textContent;
+  const logoInput = document.getElementById("logoFile");
+
+  if (logoInput && logoInput.files && logoInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      sendToWord(text, reader.result);
+    };
+    reader.readAsDataURL(logoInput.files[0]);
+  } else {
+    sendToWord(text, "");
+  }
+
+  function sendToWord(content, logo) {
+    fetch("/export-word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, logo })
+    })
+      .then(res => res.blob())
+      .then(blob => {
+        const safeBlob = new Blob([blob], { type: "application/octet-stream" });
+        triggerDownload(safeBlob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
+      })
+      .catch(err => alert("❌ " + err.message));
+  }
+}
+
+function exportToPDF() {
+  if (window.userTier === "free") return alert("🚫 Upgrade to Pro to use this feature.");
+  const { jsPDF } = window.jspdf;
+  const raw = document.getElementById("result").textContent;
+  const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+  const doc = new jsPDF();
+
+  let y = 20;
+  if (window.logoImageBase64) {
+    doc.addImage(window.logoImageBase64, 'PNG', 15, 10, 40, 20);
+    y = 35;
+  }
+
+  const lines = doc.splitTextToSize(stripped, 180);
+  doc.text(lines, 15, y);
+  y += lines.length * 10;
+
+  for (const img of window.propertyImagesBase64) {
+    doc.addImage(img, 'JPEG', 15, y, 60, 45);
+    y += 50;
+  }
+
+  const pdfBlob = new Blob([doc.output("arraybuffer")], { type: "application/octet-stream" });
+  triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  a.rel = "noopener";
+  a.target = "_self";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function clearAll() {
+  const fields = [
+    "type", "status", "location", "bedrooms", "bathrooms", "ensuites",
+    "garages", "interior", "lot", "notes", "enhance"
+  ];
+  fields.forEach(id => document.getElementById(id).value = "");
+  document.getElementById("result").textContent = "";
+  document.getElementById("char-count").textContent = "";
+  document.getElementById("output-container").style.display = 'none';
+  deleteLogo();
+  document.getElementById("images").value = "";
+  document.getElementById("image-preview").innerHTML = "";
+  window.propertyImagesBase64 = [];
+}
+
+document.getElementById("logoFile").addEventListener("change", function () {
+  const preview = document.getElementById("logo-preview");
+  preview.innerHTML = "";
+  const file = this.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert(`${file.name} exceeds 2MB limit.`);
+    this.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const img = new Image();
+    img.src = e.target.result;
+    img.style.maxHeight = "60px";
+    img.style.marginBottom = "8px";
+    img.style.borderRadius = "4px";
+    preview.appendChild(img);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '🗑️ Delete Logo';
+    deleteBtn.onclick = deleteLogo;
+    deleteBtn.style.marginLeft = '10px';
+    preview.appendChild(deleteBtn);
+
+    window.logoImageBase64 = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("images").addEventListener("change", function () {
+  const preview = document.getElementById("image-preview");
+  preview.innerHTML = "";
+  window.propertyImagesBase64 = [];
+  const files = Array.from(this.files);
+  if (files.length > 3) {
+    alert("Maximum 3 images allowed.");
+    this.value = "";
+    return;
+  }
+  files.forEach(file => {
+    if (file.size > 2 * 1024 * 1024) {
+      alert(`${file.name} exceeds 2MB limit.`);
+      this.value = "";
+      preview.innerHTML = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const base64 = e.target.result;
+      window.propertyImagesBase64.push(base64);
+
+      const img = new Image();
+      img.src = base64;
+      img.style.maxHeight = "100px";
+      img.style.marginRight = "10px";
+      img.style.borderRadius = "6px";
+
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'inline-block';
+      wrapper.style.position = 'relative';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.style.position = 'absolute';
+      deleteBtn.style.top = '0';
+      deleteBtn.style.right = '0';
+      deleteBtn.style.background = 'red';
+      deleteBtn.style.color = 'white';
+      deleteBtn.style.border = 'none';
+      deleteBtn.style.borderRadius = '50%';
+      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.onclick = function () { deleteImage(this); };
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(deleteBtn);
+      preview.appendChild(wrapper);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+window.addEventListener("load", checkTierAndAdjustUI);
+</script>

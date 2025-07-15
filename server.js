@@ -7,7 +7,7 @@ const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
 
-const { supabase, getTierFromEmail } = require('./db.js');
+const { supabase } = require('./db.js');
 const { checkTier } = require('./tierControl');
 
 const app = express();
@@ -31,16 +31,24 @@ async function validateLicense(req, res, next) {
 
   try {
     if (email) {
-      tier = await getTierFromEmail(email); // Use db.js function
-    }
-    // Optionally check license_key if provided
-    const licenseKey = req.headers['x-license-key'];
-    if (licenseKey && licenseKey !== tier) {
-      const keyTier = await getTierFromEmail(licenseKey); // Fallback to email-based tier
-      if (keyTier !== 'free') tier = keyTier;
+      const { data, error } = await supabase
+        .from('licenses')
+        .select('license_type')
+        .eq('email', email)
+        .eq('status', 'active')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.warn('License lookup failed:', error.message);
+      } else if (data) {
+        tier = data.license_type || 'free';
+      }
     }
   } catch (err) {
-    console.warn("⚠️ License validation failed:", err.message);
+    console.warn('License validation failed:', err.message);
   }
 
   req.userTier = tier;
@@ -50,24 +58,6 @@ async function validateLicense(req, res, next) {
 // ✅ License check endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
-});
-
-// ✅ Resolve license endpoint
-app.get('/resolve-license', async (req, res) => {
-  const email = req.headers['x-user-email'];
-  if (!email) {
-    console.log("No email provided for license resolution");
-    return res.json({ licenseKey: null });
-  }
-
-  try {
-    const tier = await getTierFromEmail(email);
-    console.log(`Resolved tier for ${email}: ${tier}`);
-    res.json({ licenseKey: tier }); // Return tier as licenseKey for client compatibility
-  } catch (err) {
-    console.warn("⚠️ License resolution failed:", err.message);
-    res.json({ licenseKey: null });
-  }
 });
 
 // 🧹 Developer reset route

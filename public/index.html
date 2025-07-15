@@ -127,6 +127,7 @@
 <input id="licenseInput" placeholder="Paste license key here" style="margin-bottom: 10px;" />
 <button onclick="saveLicense()">Apply License</button>
 <button onclick="generate()">Generate</button>
+<button onclick="refreshUI()">Refresh UI</button>
 <div id="output-container">
 <h3>Generated Listing:</h3>
 <div id="result"></div>
@@ -171,10 +172,12 @@ function deleteImage(button) {
 }
 
 function removeUpgradePrompt() {
-  const prompt = document.querySelector("body > div");
-  if (prompt && prompt.innerHTML.includes("Upgrade to Pro")) {
-    prompt.remove();
-  }
+  const prompts = document.querySelectorAll("body > div");
+  prompts.forEach(prompt => {
+    if (prompt.innerHTML.includes("Upgrade to Pro") || prompt.innerHTML.includes("Upgrade to Premium")) {
+      prompt.remove();
+    }
+  });
 }
 
 async function validateLicense(key) {
@@ -229,10 +232,7 @@ async function checkTierAndAdjustUI() {
       <p><strong>Upgrade to Pro or Premium for full access.</strong><br>
       <a href="https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401" target="_blank">Upgrade Monthly – $5</a> |
       <a href="https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400" target="_blank">Upgrade Yearly – $50</a></p>`;
-    upgradePrompt.style.background = "#ffeeee";
-    upgradePrompt.style.padding = "15px";
-    upgradePrompt.style.border = "1px solid #cc0000";
-    upgradePrompt.style.borderRadius = "8px";
+    upgradePrompt.style.cssText = "background:#ffeeee;padding:15px;border:1px solid #cc0000;border-radius:8px;";
     document.body.prepend(upgradePrompt);
   } else {
     removeUpgradePrompt();
@@ -529,7 +529,24 @@ document.getElementById("images").addEventListener("change", function () {
   });
 });
 
-window.addEventListener("load", checkTierAndAdjustUI);
+function refreshUI() {
+  localStorage.removeItem("licenseKey");
+  checkTierAndAdjustUI();
+  alert("UI refreshed. Check console for tier.");
+}
+
+function handlePurchaseSuccess() {
+  localStorage.removeItem("licenseKey");
+  checkTierAndAdjustUI();
+}
+
+window.addEventListener("load", () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("success") === "true") {
+    handlePurchaseSuccess();
+  }
+  checkTierAndAdjustUI();
+});
 </script>
 </body>
 </html>

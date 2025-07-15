@@ -183,11 +183,12 @@ function removeUpgradePrompt() {
 async function validateLicense(key) {
   try {
     const res = await fetch("/validate-license", {
-      headers: { "x-license-key": key || "", "x-user-id": "default-user" }
+      headers: { "x-license-key": key || "", "x-user-email": "default-user@example.com" }
     });
     const data = await res.json();
-    if (data.valid) {
-      window.userTier = data.tier || "free";
+    console.log("Validate license response:", data);
+    if (data.tier) {
+      window.userTier = data.tier;
       console.log("Tier set to:", window.userTier);
       return true;
     }
@@ -202,9 +203,10 @@ async function validateLicense(key) {
 async function resolveLicense() {
   try {
     const res = await fetch("/resolve-license", {
-      headers: { "x-user-id": "default-user" }
+      headers: { "x-user-email": "default-user@example.com" }
     });
     const data = await res.json();
+    console.log("Resolve license response:", data);
     if (data.licenseKey) {
       localStorage.setItem("licenseKey", data.licenseKey);
       console.log("LicenseKey from backend:", data.licenseKey);
@@ -538,14 +540,16 @@ function refreshUI() {
 
 function handlePurchaseSuccess() {
   localStorage.removeItem("licenseKey"); // Clear to force refresh
-  checkTierAndAdjustUI().then(() => {
-    console.log("Post-purchase tier:", window.userTier);
-    if (window.userTier === "free") {
-      alert("⚠️ Purchase detected, but tier not updated. Check server logs.");
-    } else {
-      alert("✅ Purchase successful! Tier upgraded to " + window.userTier);
-    }
-  });
+  setTimeout(() => {
+    checkTierAndAdjustUI().then(() => {
+      console.log("Post-purchase tier:", window.userTier);
+      if (window.userTier === "free") {
+        alert("⚠️ Purchase detected, but tier not updated. Check server logs.");
+      } else {
+        alert("✅ Purchase successful! Tier upgraded to " + window.userTier);
+      }
+    });
+  }, 2000); // 2-second delay
 }
 
 window.addEventListener("load", () => {

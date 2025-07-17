@@ -44,7 +44,7 @@ async function validateLicenseKey(email) {
     }
 
     console.log(`✅ Valid license for ${email}: ${license.license_type}`);
-    return (license.license_type || 'free').toLowerCase();
+    return license.license_type || 'free';
   } catch (err) {
     console.error("❌ License validation error:", err);
     return 'free';
@@ -62,11 +62,10 @@ async function updateLicense(email, tier, durationDays) {
         license_type: tier,
         status: 'active',
         is_active: true,
-        expires_at: expiresAt,
-        created_at: new Date().toISOString() // ensure ordering works
+        expires_at: expiresAt
       }
     ], {
-      onConflict: ['email'] // Confirm this is correct for your table!
+      onConflict: ['email'] // ensures it updates if the email exists
     });
 
   if (error) {
@@ -77,8 +76,46 @@ async function updateLicense(email, tier, durationDays) {
   console.log(`✅ License ${tier} set for ${email}, expires ${expiresAt}`);
 }
 
+// ✅ Minimal debug helper — does NOT affect main logic
+async function diagnoseLicense(email) {
+  if (!email) return { error: 'No email provided' };
+
+  try {
+    const { data, error } = await supabase
+      .from('licenses')
+      .select('license_type, status, expires_at, created_at')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      return { error: 'No license found', raw: error?.message };
+    }
+
+    const license = data[0];
+    const now = new Date();
+    const isValid = license.status === 'active' && new Date(license.expires_at) > now;
+    const resolvedTier = isValid ? license.license_type : 'free';
+
+    return {
+      email,
+      license_type: license.license_type,
+      status: license.status,
+      expires_at: license.expires_at,
+      created_at: license.created_at,
+      now: now.toISOString(),
+      isValid,
+      resolvedTier
+    };
+  } catch (err) {
+    console.error('❌ License diagnostic failed:', err.message);
+    return { error: 'Internal error', message: err.message };
+  }
+}
+
 module.exports = {
   supabase,
   validateLicenseKey,
-  updateLicense
+  updateLicense,
+  diagnoseLicense // ✅ Exported
 };

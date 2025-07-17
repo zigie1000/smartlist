@@ -44,7 +44,7 @@ async function validateLicenseKey(email) {
     }
 
     console.log(`✅ Valid license for ${email}: ${license.license_type}`);
-    return license.license_type || 'free';
+    return (license.license_type || 'free').toLowerCase();
   } catch (err) {
     console.error("❌ License validation error:", err);
     return 'free';
@@ -61,11 +61,12 @@ async function updateLicense(email, tier, durationDays) {
         email,
         license_type: tier,
         status: 'active',
-      is_active: true,
-        expires_at: expiresAt
+        is_active: true,
+        expires_at: expiresAt,
+        created_at: new Date().toISOString() // ensure ordering works
       }
     ], {
-      onConflict: ['email'] // ensures it updates if the email exists
+      onConflict: ['email'] // Confirm this is correct for your table!
     });
 
   if (error) {

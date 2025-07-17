@@ -43,7 +43,10 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
         productMetadata.durationDays = productMetadata.durationDays || '30';
       }
     } catch (err) {
-      console.error('❌ Failed to retrieve line items or product metadata:', err.message);
+      console.error('❌ Failed to retrieve line items or product metadata:', {
+        sessionId: session.id,
+        message: err.message
+      });
       return res.status(500).send('Stripe product retrieval error');
     }
 
@@ -62,7 +65,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       plan: planId,
       name: planName,
       status: 'active',
-    is_active: true,
+      is_active: true,
       expires_at: expiresAt.toISOString(),
       created_at: now.toISOString(),
       stripe_customer: stripeCustomer,

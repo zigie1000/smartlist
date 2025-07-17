@@ -12,19 +12,13 @@ const { checkTier } = require('./tierControl');
 
 const app = express();
 
-// ✅ Mount static frontend
 app.use(express.static(path.join(__dirname, 'public')));
-
-// ✅ Stripe Webhook must come BEFORE body parsing
 app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
-
-// ✅ Add JSON body parser for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Supabase-only license validator
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
   let tier = 'free';
@@ -54,18 +48,15 @@ async function validateLicense(req, res, next) {
   next();
 }
 
-// ✅ License check endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// 🧹 Developer reset route
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 AI Listing Generator
 app.post("/generate", async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -89,7 +80,6 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-// 📄 DOCX Export Endpoint
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -129,15 +119,28 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", "attachment; filename=PromptAgentHQ_Listing.docx");
     res.sendFile(path.resolve(outputPath));
+
+    // ✅ Cleanup temp files after sending
+    res.on('finish', () => {
+      fs.unlinkSync(inputTextPath);
+      if (fs.existsSync(logoPath)) fs.unlinkSync(logoPath);
+      imagePaths.forEach(p => fs.existsSync(p) && fs.unlinkSync(p));
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    });
   });
 });
 
-// ✅ Stripe metadata-based license update
 app.post('/stripe/update-license', async (req, res) => {
   const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
 
   if (!email || !plan || !license_type || !stripe_customer || !stripe_product) {
     return res.status(400).json({ error: "Missing required license fields" });
+  }
+
+  // ✅ Validate tier input
+  const validTiers = ['free', 'pro', 'premium'];
+  if (!validTiers.includes(license_type)) {
+    return res.status(400).json({ error: "Invalid license_type" });
   }
 
   try {
@@ -151,7 +154,7 @@ app.post('/stripe/update-license', async (req, res) => {
         stripe_product,
         status: 'active',
         is_active: true,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       }]);
 
     if (error) throw error;
@@ -162,11 +165,11 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 });
 
-// 🌍 Serve frontend
 app.get("/", (req, res) => {
+  // ✅ Optional tier log
+  console.log(`🧾 Homepage accessed by tier: ${req.userTier || 'unknown'}`);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 🚀 Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

@@ -1,4 +1,5 @@
 const express = require('express');
+const { diagnoseLicense } = require('./licenseManager');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const { exec } = require('child_process');
@@ -170,6 +171,10 @@ app.get("/", (req, res) => {
   console.log(`🧾 Homepage accessed by tier: ${req.userTier || 'unknown'}`);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
+// 🔍 Developer-only diagnostic endpoint
+app.get('/diagnose-license', (req, res) => {
+  const result = diagnoseLicense();
+  res.json(result);
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

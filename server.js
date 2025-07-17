@@ -132,13 +132,12 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
 });
 
 app.post('/stripe/update-license', async (req, res) => {
-  const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
+  const { email, plan, license_type, stripe_customer, stripe_product, license_key } = req.body;
 
-  if (!email || !plan || !license_type || !stripe_customer || !stripe_product) {
+  if (!email || !plan || !license_type || !stripe_customer || !stripe_product || !license_key) {
     return res.status(400).json({ error: "Missing required license fields" });
   }
 
-  // ✅ Validate tier input
   const validTiers = ['free', 'pro', 'premium'];
   if (!validTiers.includes(license_type)) {
     return res.status(400).json({ error: "Invalid license_type" });
@@ -153,6 +152,7 @@ app.post('/stripe/update-license', async (req, res) => {
         license_type,
         stripe_customer,
         stripe_product,
+        license_key,
         status: 'active',
         is_active: true,
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -167,14 +167,57 @@ app.post('/stripe/update-license', async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  // ✅ Optional tier log
   console.log(`🧾 Homepage accessed by tier: ${req.userTier || 'unknown'}`);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-// 🔍 Developer-only diagnostic endpoint
+
 app.get('/diagnose-license', (req, res) => {
   const result = diagnoseLicense();
   res.json(result);
 });
+
+// ✅ NEW: Confirm license exists and matches
+app.get('/confirm-license', async (req, res) => {
+  const email = req.headers['x-user-email'];
+  const key = req.headers['x-license-key'];
+
+  if (!email || !key) {
+    return res.status(400).json({ error: 'Missing email or license key' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('licenses')
+      .select('license_key, license_type, status, expires_at')
+      .eq('email', email)
+      .eq('status', 'active')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'License not found' });
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(data.expires_at);
+
+    if (data.license_key !== key) {
+      return res.status(403).json({ error: 'License key mismatch' });
+    }
+
+    if (expiresAt < now) {
+      return res.status(403).json({ error: 'License expired' });
+    }
+
+    return res.json({ valid: true, license_type: data.license_type });
+
+  } catch (err) {
+    console.error('🔒 License confirm failed:', err.message);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

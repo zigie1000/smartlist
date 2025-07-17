@@ -15,14 +15,14 @@ async function getTierFromLicenseKey(licenseKey) {
     .eq('status', 'active')
     .eq('is_active', true)
     .gt('expires_at', new Date().toISOString())
-    .single();
+    .single(); // remove .limit(1)
 
   if (error) {
     console.warn('License key lookup failed:', error.message);
     return 'free';
   }
 
-  return data?.license_type || 'free';
+  return (data?.license_type || 'free').toLowerCase();
 }
 
 async function getTierFromEmail(email) {
@@ -36,15 +36,14 @@ async function getTierFromEmail(email) {
     .eq('is_active', true)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .limit(1);
 
-  if (error) {
-    console.warn('Email lookup failed:', error.message);
+  if (error || !data || data.length === 0) {
+    console.warn('Email lookup failed:', error?.message);
     return 'free';
   }
 
-  return data?.license_type || 'free';
+  return (data[0]?.license_type || 'free').toLowerCase();
 }
 
 module.exports = {

@@ -1,0 +1,2 @@
+const { logEvent } = require('./logger');
+logEvent("License check started");

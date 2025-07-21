@@ -37,14 +37,16 @@ if (typeof window !== 'undefined') {
     }
   }
 
-// ✅ Universal Export Block (safe for both Node and browser)
+  // ✅ Assign to window for browser use
+  window.getTierFromLicenseKey = getTierFromLicenseKey;
+  window.setTier = setTier;
+}
+
+// ✅ Universal Export Block (safe for Node.js)
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     checkTier,
     getTierFromLicenseKey,
     setTier
   };
-} else {
-  window.getTierFromLicenseKey = getTierFromLicenseKey;
-  window.setTier = setTier;
 }

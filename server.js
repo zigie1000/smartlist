@@ -26,12 +26,14 @@ async function validateLicense(req, res, next) {
 
   try {
     if (email) {
-      const { data } = await supabase
-        .from('licenses')
-        .select('license_type, expires_at, status')
-        .eq('email', email)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      const { data, error } = await supabase
+  .from('licenses')
+  .select('license_type')
+  .eq('license_key', key)
+  .eq('status', 'active')
+  .eq('is_active', true) // ✅ FIXED (explicit check)
+  .gt('expires_at', new Date().toISOString())
+  .single();
 
       if (data && data[0]) {
         const now = new Date();

@@ -25,10 +25,10 @@ function getTierFromLicenseKey(key) {
   return key.startsWith("PRO") ? "pro" : "free";
 }
 
-function setTier(tier) {
-  window.userTier = tier;
-  const badge = document.getElementById("tierBadge");
-  if (badge) badge.innerText = tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier";
+async function getTierFromLicenseKey(key) {
+  const res = await fetch(`/api/checkLicense?key=${key}`);
+  const data = await res.json();
+  return data.tier || "free"; // ✅ FIXED (fully replaced logic)
 }
 
 module.exports = { checkTier, getTierFromLicenseKey, setTier };

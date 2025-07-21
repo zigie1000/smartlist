@@ -18,35 +18,30 @@ function checkTier(requiredTier) {
   };
 }
 
-// ✅ Export backend logic (used in Express routes)
-module.exports = { checkTier };
-
-// ✅ CLIENT LOGIC (browser only) — protected using window check
-if (typeof window !== 'undefined') {
-  async function getTierFromLicenseKey(key) {
-    const res = await fetch(`/api/checkLicense?key=${key}`);
-    const data = await res.json();
-    return data.tier || "free";
-  }
-
-  function setTier(tier) {
-    window.userTier = tier;
-    const badge = document.getElementById("tierBadge");
-    if (badge) {
-      badge.innerText = tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier";
-    }
-  }
-
-  // ✅ Assign to window for browser use
-  window.getTierFromLicenseKey = getTierFromLicenseKey;
-  window.setTier = setTier;
+// ✅ Shared functions (work in both Node.js and browser)
+async function getTierFromLicenseKey(key) {
+  const res = await fetch(`/api/checkLicense?key=${key}`);
+  const data = await res.json();
+  return data.tier || "free";
 }
 
-// ✅ Universal Export Block (safe for Node.js)
+function setTier(tier) {
+  if (typeof window === 'undefined') return;
+  window.userTier = tier;
+  const badge = document.getElementById("tierBadge");
+  if (badge) {
+    badge.innerText = tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier";
+  }
+}
+
+// ✅ Export logic (works in both environments)
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     checkTier,
     getTierFromLicenseKey,
     setTier
   };
+} else {
+  window.getTierFromLicenseKey = getTierFromLicenseKey;
+  window.setTier = setTier;
 }

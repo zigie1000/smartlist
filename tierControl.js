@@ -20,9 +20,10 @@ function checkTier(requiredTier) {
 module.exports = { checkTier };
 
 
-function getTierFromLicenseKey(key) {
-  if (!key) return "free";
-  return key.startsWith("PRO") ? "pro" : "free";
+async function getTierFromLicenseKey(key) {
+  const res = await fetch(`/api/checkLicense?key=${key}`);
+  const data = await res.json();
+  return data.tier || "free"; // ✅ FIXED (fully replaced logic)
 }
 
 function setTier(tier) {

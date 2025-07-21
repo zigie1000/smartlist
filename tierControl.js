@@ -1,4 +1,4 @@
-// 🌐 BACKEND ONLY — Express middleware
+// ✅ BACKEND middleware: checkTier()
 function checkTier(requiredTier) {
   const tiers = ['free', 'pro', 'premium'];
 
@@ -18,26 +18,26 @@ function checkTier(requiredTier) {
   };
 }
 
-// ✅ EXPORT BACKEND FUNCTION
+// ✅ Export backend logic (used in Express routes)
 module.exports = { checkTier };
 
-// 🌐 FRONTEND-ONLY: Include this section in a browser-safe JS file (NOT in server-side Node files)
-
+// ✅ CLIENT LOGIC (browser only) — protected using window check
 if (typeof window !== 'undefined') {
-  // ✅ CLIENT: async call to validate license key
   async function getTierFromLicenseKey(key) {
     const res = await fetch(`/api/checkLicense?key=${key}`);
     const data = await res.json();
-    return data.tier || "free"; // ✅ FIXED (fully replaced logic)
+    return data.tier || "free";
   }
 
   function setTier(tier) {
     window.userTier = tier;
     const badge = document.getElementById("tierBadge");
-    if (badge) badge.innerText = tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier";
+    if (badge) {
+      badge.innerText = tier.charAt(0).toUpperCase() + tier.slice(1) + " Tier";
+    }
   }
 
-  // ✅ Expose in browser (optional)
+  // ✅ Expose to browser global scope if needed
   window.getTierFromLicenseKey = getTierFromLicenseKey;
   window.setTier = setTier;
 }

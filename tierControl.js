@@ -4,7 +4,6 @@ function checkTier(requiredTier) {
 
   return (req, res, next) => {
     const tier = req.userTier || 'free';
-
     const userIndex = tiers.indexOf(tier);
     const requiredIndex = tiers.indexOf(requiredTier);
 
@@ -18,13 +17,14 @@ function checkTier(requiredTier) {
   };
 }
 
-// ✅ Shared functions (work in both Node.js and browser)
+// ✅ SHARED: Get tier from license key (used by both browser and backend)
 async function getTierFromLicenseKey(key) {
-  const res = await fetch(`/api/checkLicense?key=${key}`);
+  const res = await fetch(`https://promptagenthq.onrender.com/api/checkLicense?key=${key}`);
   const data = await res.json();
   return data.tier || "free";
 }
 
+// ✅ SHARED: Set tier badge (browser only)
 function setTier(tier) {
   if (typeof window === 'undefined') return;
   window.userTier = tier;
@@ -34,7 +34,7 @@ function setTier(tier) {
   }
 }
 
-// ✅ Export logic (works in both environments)
+// ✅ Universal Export Block
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     checkTier,

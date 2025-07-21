@@ -861,5 +861,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("tierDisplay");
   if (el) el.innerText = savedTier;
 });
+ window.addEventListener('load', () => {
+  const key = localStorage.getItem('licenseKey');
+  if (key) verifyAndSetTier(key); // ✅ FIXED (ensure immediate check on load)
+});   
 </script></body>
 </html>

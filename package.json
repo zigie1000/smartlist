@@ -1,19 +1,10 @@
-{
-  "name": "agency-prompt",
-  "version": "1.0.0",
-  "description": "Real estate listing generator",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "body-parser": "^1.20.2",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "openai": "^4.33.1",
-    "axios": "^1.6.7",
-    "@supabase/supabase-js": "^2.39.6",
-    "stripe": "^12.15.0",
-    "node-fetch": "^3.4.0"
-  }
+"dependencies": {
+  "node-fetch": "^3.3.2",
+  "body-parser": "^1.20.2",
+  "dotenv": "^16.3.1",
+  "express": "^4.18.2",
+  "openai": "^4.33.1",
+  "axios": "^1.6.7",
+  "@supabase/supabase-js": "^2.39.6",
+  "stripe": "^12.15.0"
 }

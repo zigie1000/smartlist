@@ -37,7 +37,14 @@ if (typeof window !== 'undefined') {
     }
   }
 
-  // ✅ Expose to browser global scope if needed
+// ✅ Universal Export Block (safe for both Node and browser)
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    checkTier,
+    getTierFromLicenseKey,
+    setTier
+  };
+} else {
   window.getTierFromLicenseKey = getTierFromLicenseKey;
   window.setTier = setTier;
 }

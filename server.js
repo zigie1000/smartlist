@@ -189,6 +189,7 @@ app.get('/api/checkLicense', async (req, res) => {
       .select('license_type')
       .eq('license_key', key)
       .eq('status', 'active')
+      .eq('is_active', true) // ✅ FIXED (explicit check)
       .gt('expires_at', new Date().toISOString())
       .single();
 

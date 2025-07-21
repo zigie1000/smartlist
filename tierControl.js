@@ -1,3 +1,9 @@
+// ✅ Optionally import fetch if in Node.js
+let fetch;
+if (typeof window === 'undefined') {
+  fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+}
+
 // ✅ BACKEND middleware: checkTier()
 function checkTier(requiredTier) {
   const tiers = ['free', 'pro', 'premium'];
@@ -17,7 +23,7 @@ function checkTier(requiredTier) {
   };
 }
 
-// ✅ SHARED: Get tier from license key (used by both browser and backend)
+// ✅ SHARED: Get tier from license key (works in both browser and backend)
 async function getTierFromLicenseKey(key) {
   const res = await fetch(`https://promptagenthq.onrender.com/api/checkLicense?key=${key}`);
   const data = await res.json();

@@ -63,7 +63,7 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
       license_type: licenseType,
       plan: planId,
       name: planName,
-      status: 'active',
+      status: 'active',is_active: true, // ✅ FIXED (add this line)
       expires_at: expiresAt.toISOString(),
       created_at: now.toISOString(),
       stripe_customer: stripeCustomer,

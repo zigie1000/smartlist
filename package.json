@@ -11,9 +11,9 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "openai": "^4.33.1",
-    "axios": "^1.6.7",
+    "axios": "^1.6.8",                        // ✅ updated to patch any vulnerabilities
     "@supabase/supabase-js": "^2.39.6",
-    "stripe": "^12.15.0",
-    "node-fetch": "^3.3.2"
+    "stripe": "^12.15.0"
+    // "node-fetch": "^3.3.2"                ❌ Removed — not needed since axios is used
   }
 }

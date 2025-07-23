@@ -3,9 +3,9 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ✅ Validate license from Supabase
 async function validateLicenseKey(email) {
   if (!email) {
     console.warn("⚠️ No email provided for license validation.");
@@ -51,6 +51,7 @@ async function validateLicenseKey(email) {
   }
 }
 
+// ✅ Update license in Supabase
 async function updateLicense(email, tier, durationDays) {
   const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -64,7 +65,7 @@ async function updateLicense(email, tier, durationDays) {
         expires_at: expiresAt
       }
     ], {
-      onConflict: ['email'] // ensures it updates if the email exists
+      onConflict: ['email']
     });
 
   if (error) {

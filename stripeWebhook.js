@@ -1,87 +1,74 @@
 const express = require('express');
 const router = express.Router();
+const bodyParser = require('body-parser');
 const { supabase } = require('./licenseManager');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const crypto = require('crypto');
 
-// Stripe webhook endpoint
-router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
+// Stripe secret key
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('❌ Stripe webhook signature error:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+// Raw body middleware for Stripe
+router.post(
+  '/stripe-webhook',
+  bodyParser.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const email = session.customer_email || (session.customer_details && session.customer_details.email);
-    const planId = session.client_reference_id || 'manual';
-    const stripeCustomer = session.customer;
-
-    let productMetadata = {};
-    let stripeProductId = null;
-    let planName = 'Unnamed Plan';
-
+    let event;
     try {
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-        expand: ['data.price.product']
-      });
-
-      const product = lineItems.data?.[0]?.price?.product;
-      stripeProductId = product?.id;
-      productMetadata = product?.metadata || {};
-      planName = product?.name || 'Unnamed Plan'; // ✅ Changed here
-
-      console.log('📦 Stripe product ID:', stripeProductId);
-      console.log('📄 Stripe product metadata:', productMetadata);
-      console.log('🏷️ Plan Name:', planName);
-
-      if (!productMetadata.tier || !productMetadata.durationDays) {
-        console.warn('⚠️ Metadata missing or incomplete. Applying fallback values.');
-        productMetadata.tier = productMetadata.tier || 'default';
-        productMetadata.durationDays = productMetadata.durationDays || '30';
-      }
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
     } catch (err) {
-      console.error('❌ Failed to retrieve line items or product metadata:', err.message);
-      return res.status(500).send('Stripe product retrieval error');
+      console.error('⚠️ Stripe webhook error:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    const licenseType = productMetadata.tier;
-    const durationDays = parseInt(productMetadata.durationDays, 10) || 30;
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-    const licenseKey = crypto.randomBytes(16).toString('hex');
+      const customer_email = session.customer_email;
+      const stripeCustomer = session.customer;
+      const stripeProduct = session.metadata.product;
+      const licenseKey = session.metadata.license_key;
+      const plan = session.metadata.plan || 'manual';
 
-    const insertPayload = {
-      email,
-      license_key: licenseKey,
-      license_type: licenseType,
-      plan: planId,
-      name: planName,
-      status: 'active',is_active: true, // ✅ FIXED (add this line)
-      expires_at: expiresAt.toISOString(),
-      created_at: now.toISOString(),
-      stripe_customer: stripeCustomer,
-      stripe_product: stripeProductId
-    };
+      // ✅ Map stripe product to license_type (used in tier logic)
+      let licenseType = 'free';
+      if (stripeProduct === 'pro_monthly' || stripeProduct === 'pro_annual') {
+        licenseType = 'pro';
+      } else if (stripeProduct === 'premium') {
+        licenseType = 'premium';
+      }
 
-    const { error } = await supabase.from('licenses').upsert([insertPayload], { onConflict: ['email'] });
+      const { error } = await supabase
+        .from('licenses')
+        .upsert(
+          {
+            email: customer_email,
+            license_key: licenseKey,
+            status: 'active',
+            license_type: licenseType, // ✅ main field used by app
+            plan: plan,
+            stripe_customer: stripeCustomer,
+            stripe_product: stripeProduct,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: ['license_key'] }
+        );
 
-    if (error) {
-      console.error('❌ Supabase insert/upsert error:', error.message);
-      return res.status(500).send('Database insert error');
+      if (error) {
+        console.error('❌ Supabase upsert error:', error.message);
+        return res.status(500).send('Internal server error');
+      }
+
+      console.log(`✅ License updated for ${customer_email}`);
+      res.status(200).send('Webhook handled');
+    } else {
+      res.status(200).send('Event ignored');
     }
-
-    console.log(`✅ License inserted or updated for ${email} → ${licenseType} until ${expiresAt.toISOString()}`);
-    return res.status(200).send('Success');
   }
-
-  return res.status(200).send('Unhandled event type');
-});
+);
 
 module.exports = router;

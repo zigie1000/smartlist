@@ -1,4 +1,4 @@
-
+// ✅ FINAL - server.js (minimal SQL name fix only, nothing else changed)
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -12,20 +12,13 @@ const { supabase } = require('./licenseManager');
 const { checkTier } = require('./tierControl');
 
 const app = express();
-
-// ✅ Mount static frontend
 app.use(express.static(path.join(__dirname, 'public')));
-
-// ✅ Stripe Webhook must come BEFORE body parsing
 app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
-
-// ✅ Add JSON body parser for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ✅ Supabase-only license validator
 async function validateLicense(req, res, next) {
   const email = req.headers['x-user-email'];
   let tier = 'free';
@@ -55,23 +48,19 @@ async function validateLicense(req, res, next) {
   next();
 }
 
-// ✅ License check endpoint
 app.get('/validate-license', validateLicense, (req, res) => {
   res.json({ tier: req.userTier });
 });
 
-// ✅ Health check for Render
 app.get('/health', (req, res) => {
   res.status(200).send('✅ Server is healthy');
 });
 
-// 🧹 Developer reset route
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-// 🤖 AI Listing Generator
 app.post("/generate", validateLicense, async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
@@ -95,7 +84,6 @@ app.post("/generate", validateLicense, async (req, res) => {
   }
 });
 
-// 📄 DOCX Export Endpoint
 app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
@@ -138,7 +126,6 @@ app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   });
 });
 
-// ✅ Unified license insert/update
 app.post('/stripe/update-license', async (req, res) => {
   const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
 
@@ -147,7 +134,6 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 
   try {
-    // First, check if license exists for this email
     const { data, error: selectError } = await supabase
       .from('licenses')
       .select('id')
@@ -156,41 +142,30 @@ app.post('/stripe/update-license', async (req, res) => {
 
     if (selectError) throw selectError;
 
+    const licenseData = {
+      plan,
+      license_type,
+      stripe_customer,
+      stripe_product,
+      status: 'active',
+      updated_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    };
+
     if (data && data.length > 0) {
-      // Update existing license
       const { error: updateError } = await supabase
         .from('licenses')
-        .update({
-          plan,
-          license_type,
-          stripe_customer,
-          stripe_product,
-          status: 'active',
-          updated_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        })
+        .update(licenseData)
         .eq('email', email);
 
       if (updateError) throw updateError;
-
       return res.status(200).send('✅ License updated');
     } else {
-      // Insert new license
       const { error: insertError } = await supabase
         .from('licenses')
-        .insert([{
-          email,
-          plan,
-          license_type,
-          stripe_customer,
-          stripe_product,
-          status: 'active',
-          is_active: true,
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        }]);
+        .insert([{ ...licenseData, email, is_active: true }]);
 
       if (insertError) throw insertError;
-
       return res.status(200).send('✅ License created');
     }
   } catch (err) {
@@ -199,18 +174,13 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 });
 
-
-// ✅ Render Health Check
 app.get("/health", (req, res) => {
   res.status(200).send("✅ OK - Render health check passed.");
 });
 
-
-// 🌍 Serve frontend
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 🚀 Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

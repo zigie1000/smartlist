@@ -1,10 +1,11 @@
-// ✅ Optionally import fetch if in Node.js
+// tierControl.js
+
 let fetch;
 if (typeof window === 'undefined') {
   fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 }
 
-// ✅ BACKEND middleware: checkTier()
+// ✅ Middleware to restrict access based on required tier
 function checkTier(requiredTier) {
   const tiers = ['free', 'pro', 'premium'];
 
@@ -23,16 +24,17 @@ function checkTier(requiredTier) {
   };
 }
 
-// ✅ SHARED: Get tier from license key (works in both browser and backend)
+// ✅ Function to retrieve tier from license check API
 async function getTierFromLicenseKey(key) {
   const res = await fetch(`https://promptagenthq.onrender.com/api/checkLicense?key=${key}`);
   const data = await res.json();
-  return data.tier || "free";
+  return data.tier || 'free';
 }
 
-// ✅ SHARED: Set tier badge (browser only)
+// ✅ Update tier badge on frontend
 function setTier(tier) {
   if (typeof window === 'undefined') return;
+
   window.userTier = tier;
   const badge = document.getElementById("tierBadge");
   if (badge) {
@@ -40,7 +42,7 @@ function setTier(tier) {
   }
 }
 
-// ✅ Universal Export Block
+// ✅ Export logic for browser and backend
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     checkTier,

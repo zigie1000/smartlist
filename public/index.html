@@ -224,11 +224,13 @@ function setTier(tier) {
 function updateFeatureAccess() {
   let t = window.userTier || "free";
   let showPro = (t === "pro" || t === "premium");
-  document.getElementById("exportBtn").disabled = !showPro;
-  document.getElementById("exportPdfBtn").disabled = !showPro;
-  document.getElementById("exportTextBtn").disabled = !showPro;
-  document.getElementById("enhanceBtn").disabled = !showPro;
-  document.getElementById("copyBtn").disabled = false;
+
+  if(document.getElementById("exportBtn"))      document.getElementById("exportBtn").disabled      = !showPro;
+  if(document.getElementById("exportPdfBtn"))   document.getElementById("exportPdfBtn").disabled   = !showPro;
+  if(document.getElementById("exportTextBtn"))  document.getElementById("exportTextBtn").disabled  = !showPro;
+  if(document.getElementById("enhanceBtn"))     document.getElementById("enhanceBtn").disabled     = !showPro;
+  if(document.getElementById("copyBtn"))        document.getElementById("copyBtn").disabled        = false;
+
   log("🎚️ Access updated for tier: " + t);
 }
 

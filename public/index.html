@@ -385,8 +385,9 @@ function exportToPDF_Instant() {
       y += 50;
     }
   }
-  doc.save(getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-  log("⬇️ Exported to PDF (instant, client-side).");
+  const pdfBlob = doc.output("blob");
+triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"), true);
+log("⬇️ Exported to PDF (instant, client-side).");
 }
 
 // --- Optional: server-side PDF (not used by button, for reference) ---
@@ -453,6 +454,7 @@ function triggerDownload(blob, filename) {
   a.rel = "noopener";
   // Open not in same page
   //a.target = "_self";
+  if (openInNewTab) a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

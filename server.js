@@ -124,8 +124,7 @@ app.post("/generate", validateLicense, async (req, res) => {
 });
 
 // --- Export Word (Pro only) ---
-// REMOVE tier check (so anyone can export for now)
-app.post("/export-word", validateLicense, (req, res) => {
+app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
 

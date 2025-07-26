@@ -359,14 +359,8 @@ function exportToText() {
 
 // --- Client-side PDF Export (old jsPDF method, always works) ---
 function exportToPDF_Instant() {
-  // Uncomment next 3 lines if you want to block for free users
-  // if (window.userTier === "free") {
-  //   alert("❌ Export requires Pro or Premium tier.");
-  //   return;
-  // }
   const { jsPDF } = window.jspdf;
   const raw = document.getElementById("result").textContent;
-  // Remove accents/normalize if needed:
   const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
   const doc = new jsPDF();
 
@@ -385,8 +379,12 @@ function exportToPDF_Instant() {
       y += 50;
     }
   }
-  doc.save(getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+
+  // THIS PART FORCES DOWNLOAD INSTEAD OF OPENING
+  const pdfBlob = new Blob([doc.output("arraybuffer")], { type: "application/pdf" });
+  triggerDownload(pdfBlob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
   log("⬇️ Exported to PDF (instant, client-side).");
+}
 }
 
 // --- Optional: server-side PDF (not used by button, for reference) ---

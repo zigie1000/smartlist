@@ -22,8 +22,6 @@
     #char-count { margin-top: 10px; font-size: 13px; color: #555; }
     #image-preview img, #logo-preview img { max-height: 100px; margin-right: 10px; border-radius: 6px; }
     #debugLog { width: 100%; min-height: 70px; font-family: monospace; font-size: 13px; color: #333; margin-top: 22px; border-radius: 6px; padding: 7px; border: 1px solid #ccc; background: #fafafa; }
-    #licenseStatusMsg { font-size: 18px; color: #333; display: block; margin-bottom: 10px; }
-    #licenseStatusCard { text-align: center; }
   </style>
 </head>
 <body>
@@ -36,7 +34,8 @@
     <button onclick="showBuyPremium()" style="background:#c79a0b;color:white;">Buy Premium (Annual)</button>
     <button onclick="clearLicense()" style="background:#8e2424;">Clear License</button>
     <button onclick="showLicenseEntry()" style="background:#1976d2;">Enter License Key</button>
-    <button onclick="checkAndUpdateTier()" style="background:#60be45;">Recheck License</button> <!-- [FIX] -->
+    <!-- PATCH: Added Recheck License -->
+    <button onclick="recheckLicense()" style="background:#8bc34a;">Recheck License</button>
   </div>
 
   <!-- Email Modal -->
@@ -56,14 +55,6 @@
       <input type="text" id="licenseInput" placeholder="xxxx-xxxx-xxxx-xxxx" maxlength="32" autocomplete="off"/>
       <button onclick="saveLicense()">Submit</button>
       <button onclick="hideLicenseEntry()" style="background:#aaa;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- License Status Modal [FIX] -->
-  <div id="licenseStatusModal" class="modal-bg">
-    <div class="modal-card" id="licenseStatusCard">
-      <span id="licenseStatusMsg">Checking license status...</span>
-      <button onclick="hideLicenseStatus()" style="margin-top:16px;background:#aaa;">Close</button>
     </div>
   </div>
 
@@ -127,20 +118,47 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+// --- PATCH BEGIN: Modal helpers for feedback ---
+function showCheckingModal(msg="Checking...") {
+  let modal = document.createElement('div');
+  modal.id = "checkingModal";
+  modal.style.position = "fixed";
+  modal.style.zIndex = 2000;
+  modal.style.left = 0;
+  modal.style.top = 0;
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.background = "rgba(30,30,30,0.4)";
+  modal.innerHTML = `
+    <div style="background:#fff; padding:36px 36px 18px; border-radius:14px; max-width:340px; margin:120px auto; box-shadow:0 6px 30px rgba(0,0,0,0.18);text-align:center;">
+      <div style="font-size:18px;margin-bottom:18px">${msg}</div>
+      <button onclick="hideModal()" style="background:#aaa;padding:8px 22px;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+function hideModal() {
+  let modal = document.getElementById('checkingModal');
+  if (modal) modal.remove();
+}
+// --- PATCH END ---
+
+// --- Stripe Success Email Capture (handles ?checkout=success&email=...) ---
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const email = params.get('email');
+  const checkout = params.get('checkout');
+  if (checkout === 'success' && email && email.includes('@')) {
+    localStorage.setItem('userEmail', email);
+    // Optionally reload to unlock features immediately
+    // window.location.reload();
+    // Clean URL: remove &email=... for privacy but keep ?checkout=success
+    window.history.replaceState({}, document.title, window.location.pathname + '?checkout=success');
+  }
+})();
+
 window.logoImageBase64 = "";
 window.propertyImagesBase64 = [];
-
-// --- License Status Modal [FIX] ---
-function showLicenseStatus(msg, isError) {
-  const modal = document.getElementById("licenseStatusModal");
-  const msgSpan = document.getElementById("licenseStatusMsg");
-  msgSpan.innerHTML = msg;
-  msgSpan.style.color = isError ? '#b00020' : '#333';
-  modal.style.display = 'block';
-}
-function hideLicenseStatus() {
-  document.getElementById("licenseStatusModal").style.display = 'none';
-}
 
 function log(msg) {
   const logArea = document.getElementById("debugLog");
@@ -150,6 +168,62 @@ function log(msg) {
   if (logArea.value.length > 12000) logArea.value = logArea.value.slice(-9000);
   console.log(msg);
 }
+
+// --- PATCH BEGIN: Universal License Detection Function ---
+async function detectAndSyncLicense(showPromptIfFree=true) {
+  let licenseKey = localStorage.getItem("licenseKey");
+  let userEmail = localStorage.getItem("userEmail");
+  let tier = "free";
+  // 1. Try local licenseKey first
+  if (licenseKey) {
+    showCheckingModal("Checking license key...");
+    try {
+      const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(licenseKey)}`);
+      const data = await res.json();
+      hideModal();
+      if (data.tier && data.status === "active") {
+        tier = data.tier;
+        setTier(tier);
+        updateFeatureAccess();
+        log("✅ Loaded license from localStorage. Tier: " + tier);
+        return tier;
+      } else {
+        localStorage.removeItem("licenseKey");
+        log("❌ License key not recognized or expired.");
+      }
+    } catch (e) {
+      hideModal();
+      log("❌ Error validating license key: " + e.message);
+    }
+  }
+  // 2. Try email next
+  if (userEmail) {
+    showCheckingModal("Checking for license linked to your email...");
+    try {
+      const res = await fetch(`/validate-license?email=${encodeURIComponent(userEmail)}`);
+      const data = await res.json();
+      hideModal();
+      if (data.tier && data.status === "active") {
+        tier = data.tier;
+        if (data.licenseKey) localStorage.setItem("licenseKey", data.licenseKey);
+        setTier(tier);
+        updateFeatureAccess();
+        log("✅ Loaded license by email. Tier: " + tier);
+        return tier;
+      }
+    } catch (e) {
+      hideModal();
+      log("❌ Error checking license by email: " + e.message);
+    }
+  }
+  // 3. Default to free
+  setTier("free");
+  updateFeatureAccess();
+  log("👤 No valid license/email found, set to free.");
+  if (showPromptIfFree) showEmailPrompt();
+  return "free";
+}
+// --- PATCH END ---
 
 // --- LICENSE & TIER MANAGEMENT ---
 function showEmailPrompt() {
@@ -166,82 +240,7 @@ function hideLicenseEntry() {
   document.getElementById('licenseModalBg').style.display = 'none';
 }
 
-// [FIX] -- Save License & Validate
-async function saveLicense() {
-  const key = document.getElementById("licenseInput").value.trim();
-  if (!key) return alert("❗ Please enter a license key.");
-  showLicenseStatus("Validating license key...", false);
-  try {
-    const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(key)}`);
-    const { tier } = await res.json();
-    if (!tier || tier === "free") {
-      showLicenseStatus("<span style='color:#b00020;font-size:22px;'>❌ License not recognized or expired.</span>", true);
-      log("❌ License key not recognized or expired.");
-      setTier("free");
-      window.userTier = "free";
-      updateFeatureAccess();
-    } else {
-      localStorage.setItem("licenseKey", key);
-      setTier(tier);
-      window.userTier = tier;
-      updateFeatureAccess();
-      showLicenseStatus(`<span style='color:#43a047;font-size:22px;'>✅ License saved and applied: ${tier.toUpperCase()}</span>`, false);
-      hideLicenseEntry();
-      log(`✅ License saved and applied: ${tier}`);
-    }
-  } catch (err) {
-    showLicenseStatus("❌ Error validating license. Try again.", true);
-    log("❌ License check error: " + err.message);
-    setTier("free");
-    updateFeatureAccess();
-  }
-}
-
-// [FIX] -- Onload and "Recheck License" always validates backend
-async function checkAndUpdateTier() {
-  let licenseKey = localStorage.getItem("licenseKey");
-  let email = localStorage.getItem("userEmail");
-  if (licenseKey) {
-    showLicenseStatus("Checking license key...", false);
-    try {
-      const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(licenseKey)}`);
-      const { tier } = await res.json();
-      setTier(tier || "free");
-      window.userTier = tier || "free";
-      updateFeatureAccess();
-      hideLicenseStatus();
-      log(`🔑 Loaded license from localStorage. Tier: ${tier}`);
-    } catch (e) {
-      setTier("free");
-      window.userTier = "free";
-      updateFeatureAccess();
-      showLicenseStatus("❌ Error checking license.", true);
-    }
-  } else if (email) {
-    showLicenseStatus("Checking license by email...", false);
-    try {
-      const res = await fetch(`/validate-license?email=${encodeURIComponent(email)}`);
-      const { tier } = await res.json();
-      setTier(tier || "free");
-      window.userTier = tier || "free";
-      updateFeatureAccess();
-      hideLicenseStatus();
-      log(`🔑 Loaded license by email from localStorage. Tier: ${tier}`);
-    } catch (e) {
-      setTier("free");
-      window.userTier = "free";
-      updateFeatureAccess();
-      showLicenseStatus("❌ Error checking license.", true);
-    }
-  } else {
-    setTier("free");
-    window.userTier = "free";
-    updateFeatureAccess();
-    log("👤 No license/email found, set to free.");
-  }
-}
-
-// [FIX] -- Email prompt: validate and update
+// --- PATCH BEGIN: Replace Email Modal Continue Button Handler ---
 document.getElementById("continueBtn").onclick = async function () {
   const email = document.getElementById("emailInput").value.trim();
   if (!email.match(/^[^@]+@[^@]+\.[^@]+$/)) {
@@ -249,14 +248,58 @@ document.getElementById("continueBtn").onclick = async function () {
     return;
   }
   localStorage.setItem("userEmail", email);
+  document.getElementById("statusMsg").innerText = "🔍 Checking license...";
+  log("📬 Email entered: " + email);
   hideEmailPrompt();
-  checkAndUpdateTier();
+  detectAndSyncLicense(false);
 };
+// --- PATCH END ---
 
 function maskLicense(key) {
   if (!key || key.length < 4) return 'xxxx';
   return 'xxxx-xxxx-xxxx-' + key.slice(-4);
 }
+
+// --- PATCH BEGIN: Replace Manual License Entry (saveLicense) ---
+async function saveLicense() {
+  const key = document.getElementById("licenseInput").value.trim();
+  if (!key) return alert("❗ Please enter a license key.");
+  localStorage.setItem("licenseKey", key);
+  log("🔑 License key saved locally: " + maskLicense(key));
+  showCheckingModal("Checking license key...");
+  try {
+    const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(key)}`);
+    const data = await res.json();
+    hideModal();
+    if (data.tier && data.status === "active") {
+      setTier(data.tier);
+      updateFeatureAccess();
+      alert("✅ License saved and applied: " + (data.tier || 'free').toUpperCase());
+      hideLicenseEntry();
+    } else {
+      localStorage.removeItem("licenseKey");
+      setTier("free");
+      updateFeatureAccess();
+      alert("❌ License not recognized or expired.");
+    }
+  } catch (e) {
+    hideModal();
+    alert("❌ Error validating license: " + e.message);
+  }
+}
+// --- PATCH END ---
+
+async function getTierFromLicenseKey(key) {
+  try {
+    const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(key)}`);
+    const { tier } = await res.json();
+    return tier || "free";
+  } catch (err) {
+    log("❌ License check error: " + err.message);
+    return "free";
+  }
+}
+
 function clearLicense() {
   if (!confirm("Are you sure you want to clear your license and email?")) return;
   localStorage.removeItem("licenseKey");
@@ -292,7 +335,7 @@ function updateFeatureAccess() {
   log("🎚️ Access updated for tier: " + t);
 }
 
-// Stripe Buttons
+// Stripe Buttons (just open links)
 function showBuyPro() {
   window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank");
 }
@@ -300,25 +343,22 @@ function showBuyPremium() {
   window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank");
 }
 
-// --- INITIAL DETECTION LOGIC ---
-// [FIX] -- On load, always check tier
-window.onload = checkAndUpdateTier;
+// --- PATCH BEGIN: Replace window.onload logic ---
+window.onload = function () {
+  detectAndSyncLicense();
+};
+// --- PATCH END ---
 
-// --- Stripe Success Email Capture (handles ?checkout=success&email=...) ---
-// [FIX] -- After Stripe, force validation
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const email = params.get('email');
-  const checkout = params.get('checkout');
-  if (checkout === 'success' && email && email.includes('@')) {
-    localStorage.setItem('userEmail', email);
-    checkAndUpdateTier();
-    window.history.replaceState({}, document.title, window.location.pathname + '?checkout=success');
-  }
-})();
+// --- PATCH BEGIN: Add Recheck License Handler ---
+function recheckLicense() {
+  detectAndSyncLicense(false);
+  alert("🔄 License rechecked and access updated.");
+}
+// --- PATCH END ---
 
-// --- GENERATION LOGIC, IMAGE HANDLING, ETC (no changes, left as is) ---
+// --- GENERATION LOGIC, IMAGE HANDLING, ETC (Unchanged, except add log calls where needed) ---
 async function generate() {
+  // ... (your original code, unchanged except add logging)
   const type = document.getElementById("type").value;
   const status = document.getElementById("status").value;
   const location = document.getElementById("location").value.trim();
@@ -398,6 +438,7 @@ function exportToWord() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
+  // original exportToWord code
   alert("Word export would trigger here. (Integrate with your /export-word API)");
   log("⬇️ Exported to DOCX (mock).");
 }
@@ -406,6 +447,7 @@ function exportToPDF() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
+  // original exportToPDF code
   alert("PDF export would trigger here. (Integrate with your PDF logic)");
   log("⬇️ Exported to PDF (mock).");
 }
@@ -430,6 +472,7 @@ function clearAll() {
   document.getElementById("output-container").style.display = 'none';
   log("🧹 Form cleared.");
 }
+// Logo & image preview (no change from your file)
 document.getElementById("logoFile").addEventListener("change", function () {
   const preview = document.getElementById("logo-preview");
   preview.innerHTML = "";

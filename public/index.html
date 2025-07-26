@@ -52,9 +52,9 @@
       <button onclick="saveLicense()">Submit</button>
       <button onclick="hideLicenseEntry()" style="background:#aaa;">Cancel</button>
     </div>
-  </div>
-  <!-- Main Form -->
-  <label>Listing Type</label>
+  </div><!-- Main Form -->
+<div class="form-row">
+  <label for="type">Listing Type</label>
   <select id="type">
     <option value="">Select Type</option>
     <option value="Apartment">Apartment</option>
@@ -63,37 +63,64 @@
     <option value="Penthouse">Penthouse</option>
     <option value="Studio">Studio</option>
   </select>
-  <label>Status</label>
+</div>
+<div class="form-row">
+  <label for="status">Status</label>
   <select id="status">
     <option value="">Select Status</option>
     <option value="For Sale">For Sale</option>
     <option value="For Rent">For Rent</option>
   </select>
-  <label>Location</label>
+</div>
+<div class="form-row">
+  <label for="location">Location</label>
   <input id="location" placeholder="e.g. Sea Point, Cape Town" type="text"/>
-  <label>Bedrooms</label>
+</div>
+<div class="form-row">
+  <label for="bedrooms">Bedrooms</label>
   <input id="bedrooms" min="0" placeholder="e.g. 3" type="number"/>
-  <label>Bathrooms</label>
+</div>
+<div class="form-row">
+  <label for="bathrooms">Bathrooms</label>
   <input id="bathrooms" min="0" placeholder="e.g. 2" type="number"/>
-  <label>Ensuite Bathrooms</label>
+</div>
+<div class="form-row">
+  <label for="ensuites">Ensuite Bathrooms</label>
   <input id="ensuites" min="0" placeholder="e.g. 1" type="number"/>
-  <label>Garages</label>
+</div>
+<div class="form-row">
+  <label for="garages">Garages</label>
   <input id="garages" min="0" placeholder="e.g. 2" type="number"/>
-  <label>Living Space Area (m²)</label>
+</div>
+<div class="form-row">
+  <label for="interior">Living Space Area (m²)</label>
   <input id="interior" min="0" placeholder="e.g. 120" type="number"/>
-  <label>Lot Size / Erf Size (m²)</label>
+</div>
+<div class="form-row">
+  <label for="lot">Lot Size / Erf Size (m²)</label>
   <input id="lot" min="0" placeholder="e.g. 500" type="number"/>
-  <label>Additional Features / Notes</label>
+</div>
+<div class="form-row">
+  <label for="notes">Additional Features / Notes</label>
   <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
-  <label>Agency/Agent Details</label>
+</div>
+<div class="form-row">
+  <label for="agent">Agency/Agent Details</label>
   <textarea id="agent" placeholder="e.g. John Doe&#10;Example Realty&#10;0712345678&#10;john@example.com"></textarea>
-  <label>Upload Logo Image (Max 2MB)</label>
+</div>
+<div class="form-row">
+  <label for="logoFile">Upload Logo Image (Max 2MB)</label>
   <input accept="image/*" id="logoFile" type="file"/>
-  <div id="logo-preview"></div>
-  <label>Upload Property Images (Max 3, 2MB each)</label>
+</div>
+<div id="logo-preview"></div>
+<div class="form-row">
+  <label for="images">Upload Property Images (Max 3, 2MB each)</label>
   <input accept="image/*" id="images" multiple type="file"/>
-  <div id="image-preview"></div>
+</div>
+<div id="image-preview"></div>
+<div class="form-row">
   <button onclick="generate()">Generate</button>
+</div>
   <div id="output-container">
     <h3>Generated Listing:</h3>
     <div id="result"></div>

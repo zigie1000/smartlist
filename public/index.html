@@ -445,20 +445,19 @@ function exportToWord() {
   });
 }
 
-function triggerDownload(blob, filename) {
+function triggerDownload(blob, filename, openInNewTab = false) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.style.display = 'none';
   a.rel = "noopener";
-  // Open not in same page
-  //a.target = "_self";
   if (openInNewTab) a.target = "_blank";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
 }
 function clearAll() {
   const fields = [ "type", "status", "location", "bedrooms", "bathrooms", "ensuites", "garages", "interior", "lot", "notes", "enhance" ];

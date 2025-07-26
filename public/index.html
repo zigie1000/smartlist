@@ -28,7 +28,6 @@
 <div class="container">
   <span id="tierBadge">Free Tier</span>
   <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
-
   <div style="margin-bottom:18px">
     <button onclick="showBuyPro()" style="background:#1976d2;color:white;">Buy Pro (Monthly)</button>
     <button onclick="showBuyPremium()" style="background:#c79a0b;color:white;">Buy Premium (Annual)</button>
@@ -36,7 +35,6 @@
     <button onclick="showLicenseEntry()" style="background:#1976d2;">Enter License Key</button>
     <button onclick="recheckLicense()" style="background:#8bc34a;">Recheck License</button>
   </div>
-
   <!-- Email Modal -->
   <div id="modalBg" class="modal-bg">
     <div class="modal-card">
@@ -46,7 +44,6 @@
       <div id="statusMsg" style="margin-top:10px; color:#666; font-size:14px;"></div>
     </div>
   </div>
-
   <!-- Manual License Modal -->
   <div id="licenseModalBg" class="modal-bg">
     <div class="modal-card">
@@ -56,7 +53,6 @@
       <button onclick="hideLicenseEntry()" style="background:#aaa;">Cancel</button>
     </div>
   </div>
-
   <!-- Main Form -->
   <label>Listing Type</label>
   <select id="type">
@@ -90,12 +86,12 @@
   <label>Additional Features / Notes</label>
   <textarea id="notes" placeholder="e.g. Ocean views, pool, garden, fireplace..."></textarea>
   <label>Agency/Agent Details</label>
-  <textarea id="agent" placeholder="e.g. John Doe\nExample Realty\n0712345678\njohn@example.com"></textarea>
+  <textarea id="agent" placeholder="e.g. John Doe&#10;Example Realty&#10;0712345678&#10;john@example.com"></textarea>
   <label>Upload Logo Image (Max 2MB)</label>
   <input accept="image/*" id="logoFile" type="file"/>
   <div id="logo-preview"></div>
   <label>Upload Property Images (Max 3, 2MB each)</label>
-  <input accept="image/*" id="images" multiple="" type="file"/>
+  <input accept="image/*" id="images" multiple type="file"/>
   <div id="image-preview"></div>
   <button onclick="generate()">Generate</button>
   <div id="output-container">
@@ -117,69 +113,76 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-// --- Stripe Success Email Capture (handles ?checkout=success&email=...) ---
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const email = params.get('email');
-  const checkout = params.get('checkout');
-  if (checkout === 'success' && email && email.includes('@')) {
-    localStorage.setItem('userEmail', email);
-    // Optionally reload to unlock features immediately
-    // window.location.reload();
-    window.history.replaceState({}, document.title, window.location.pathname + '?checkout=success');
-  }
-})();
+// --- License/Email Patch Logic ---
 
-window.logoImageBase64 = "";
-window.propertyImagesBase64 = [];
-
-function log(msg) {
-  const logArea = document.getElementById("debugLog");
-  if (!logArea) return;
-  logArea.value += `${new Date().toISOString()} — ${msg}\n`;
-  logArea.scrollTop = logArea.scrollHeight;
-  if (logArea.value.length > 12000) logArea.value = logArea.value.slice(-9000);
-  console.log(msg);
+function showCheckingModal(msg="Checking...") {
+  let modal = document.createElement('div');
+  modal.id = "checkingModal";
+  modal.style.position = "fixed";
+  modal.style.zIndex = 2000;
+  modal.style.left = 0;
+  modal.style.top = 0;
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.background = "rgba(30,30,30,0.4)";
+  modal.innerHTML = `
+    <div style="background:#fff; padding:36px 36px 18px; border-radius:14px; max-width:340px; margin:120px auto; box-shadow:0 6px 30px rgba(0,0,0,0.18);text-align:center;">
+      <div style="font-size:18px;margin-bottom:18px">${msg}</div>
+      <button onclick="hideModal()" style="background:#aaa;padding:8px 22px;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
-
-// --- Universal License Detection (tier/email/licenseKey) ---
+function hideModal() {
+  let modal = document.getElementById('checkingModal');
+  if (modal) modal.remove();
+}
 async function detectAndSyncLicense(showPromptIfFree=true) {
   let licenseKey = localStorage.getItem("licenseKey");
   let userEmail = localStorage.getItem("userEmail");
-  let tier = "free";
-  // 1. Try licenseKey first
+  let triedEmail = false;
   if (licenseKey) {
+    showCheckingModal("Checking license key...");
     try {
       const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(licenseKey)}`);
       const data = await res.json();
+      hideModal();
       if (data.tier && data.status === "active") {
-        tier = data.tier;
-        setTier(tier);
+        setTier(data.tier);
         updateFeatureAccess();
-        log("✅ Loaded license from localStorage. Tier: " + tier);
-        return tier;
+        if (data.licenseKey) localStorage.setItem("licenseKey", data.licenseKey);
+        if (data.email) localStorage.setItem("userEmail", data.email);
+        log("✅ Loaded license from licenseKey. Tier: " + data.tier);
+        return;
       } else {
         localStorage.removeItem("licenseKey");
-        log("❌ License key not recognized or expired.");
+        log("❌ License key not recognized or expired. Cleared localStorage.");
+        triedEmail = true;
       }
     } catch (e) {
+      hideModal();
       log("❌ Error validating license key: " + e.message);
     }
   }
-  // 2. Try email next
-  if (userEmail) {
+  if (userEmail && !triedEmail) {
+    showCheckingModal("Checking for license linked to your email...");
     try {
       const res = await fetch(`/validate-license?email=${encodeURIComponent(userEmail)}`);
       const data = await res.json();
+      hideModal();
       if (data.tier && data.status === "active") {
-        tier = data.tier;
-        if (data.licenseKey) localStorage.setItem("licenseKey", data.licenseKey);
-        setTier(tier);
+        setTier(data.tier);
         updateFeatureAccess();
-        log("✅ Loaded license by email. Tier: " + tier);
-        return tier;
+        if (data.licenseKey) localStorage.setItem("licenseKey", data.licenseKey);
+        if (data.email) localStorage.setItem("userEmail", data.email);
+        log("✅ Loaded license by email. Tier: " + data.tier);
+        return;
+      } else {
+        localStorage.removeItem("userEmail");
+        log("❌ Email not recognized for license. Cleared localStorage.");
       }
     } catch (e) {
+      hideModal();
       log("❌ Error checking license by email: " + e.message);
     }
   }
@@ -187,24 +190,11 @@ async function detectAndSyncLicense(showPromptIfFree=true) {
   updateFeatureAccess();
   log("👤 No valid license/email found, set to free.");
   if (showPromptIfFree) showEmailPrompt();
-  return "free";
 }
-
-// --- LICENSE & TIER MANAGEMENT ---
-function showEmailPrompt() {
-  document.getElementById('modalBg').style.display = 'block';
-}
-function hideEmailPrompt() {
-  document.getElementById('modalBg').style.display = 'none';
-}
-function showLicenseEntry() {
-  document.getElementById('licenseInput').value = "";
-  document.getElementById('licenseModalBg').style.display = 'block';
-}
-function hideLicenseEntry() {
-  document.getElementById('licenseModalBg').style.display = 'none';
-}
-
+function showEmailPrompt() { document.getElementById('modalBg').style.display = 'block'; }
+function hideEmailPrompt() { document.getElementById('modalBg').style.display = 'none'; }
+function showLicenseEntry() { document.getElementById('licenseInput').value = ""; document.getElementById('licenseModalBg').style.display = 'block'; }
+function hideLicenseEntry() { document.getElementById('licenseModalBg').style.display = 'none'; }
 document.getElementById("continueBtn").onclick = async function () {
   const email = document.getElementById("emailInput").value.trim();
   if (!email.match(/^[^@]+@[^@]+\.[^@]+$/)) {
@@ -217,7 +207,6 @@ document.getElementById("continueBtn").onclick = async function () {
   hideEmailPrompt();
   detectAndSyncLicense(false);
 };
-
 function maskLicense(key) {
   if (!key || key.length < 4) return 'xxxx';
   return 'xxxx-xxxx-xxxx-' + key.slice(-4);
@@ -227,12 +216,16 @@ async function saveLicense() {
   if (!key) return alert("❗ Please enter a license key.");
   localStorage.setItem("licenseKey", key);
   log("🔑 License key saved locally: " + maskLicense(key));
+  showCheckingModal("Checking license key...");
   try {
     const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(key)}`);
     const data = await res.json();
+    hideModal();
     if (data.tier && data.status === "active") {
       setTier(data.tier);
       updateFeatureAccess();
+      if (data.licenseKey) localStorage.setItem("licenseKey", data.licenseKey);
+      if (data.email) localStorage.setItem("userEmail", data.email);
       alert("✅ License saved and applied: " + (data.tier || 'free').toUpperCase());
       hideLicenseEntry();
     } else {
@@ -242,10 +235,10 @@ async function saveLicense() {
       alert("❌ License not recognized or expired.");
     }
   } catch (e) {
+    hideModal();
     alert("❌ Error validating license: " + e.message);
   }
 }
-
 function clearLicense() {
   if (!confirm("Are you sure you want to clear your license and email?")) return;
   localStorage.removeItem("licenseKey");
@@ -256,7 +249,6 @@ function clearLicense() {
   alert("✅ License cleared. Back to free tier.");
   log("🔄 License cleared. Downgraded to free.");
 }
-
 function setTier(tier) {
   window.userTier = tier;
   const badge = document.getElementById("tierBadge");
@@ -267,8 +259,6 @@ function setTier(tier) {
   else badge.className = '';
   badge.innerText = (t.charAt(0).toUpperCase() + t.slice(1)) + " Tier";
 }
-
-// Tier-based UI/UX Control
 function updateFeatureAccess() {
   let t = window.userTier || "free";
   let showPro = (t === "pro" || t === "premium");
@@ -280,27 +270,23 @@ function updateFeatureAccess() {
   if(document.getElementById("clearBtn"))       document.getElementById("clearBtn").disabled       = false;
   log("🎚️ Access updated for tier: " + t);
 }
-
-// Stripe Buttons (just open links)
-function showBuyPro() {
-  window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank");
+function showBuyPro() { window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank"); }
+function showBuyPremium() { window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank"); }
+window.onload = function () { detectAndSyncLicense(); };
+function recheckLicense() { detectAndSyncLicense(false); alert("🔄 License rechecked and access updated."); }
+function log(msg) {
+  const logArea = document.getElementById("debugLog");
+  if (!logArea) return;
+  logArea.value += `${new Date().toISOString()} — ${msg}\n`;
+  logArea.scrollTop = logArea.scrollHeight;
+  if (logArea.value.length > 12000) logArea.value = logArea.value.slice(-9000);
+  console.log(msg);
 }
-function showBuyPremium() {
-  window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank");
-}
+// --- The rest of your generate, export, and image code is unchanged ---
 
-// --- Detect & Sync License on Page Load ---
-window.onload = function () {
-  detectAndSyncLicense();
-};
-
-// --- Add Recheck License Handler ---
-function recheckLicense() {
-  detectAndSyncLicense(false);
-  alert("🔄 License rechecked and access updated.");
-}
-
-// --- GENERATION LOGIC, IMAGE HANDLING, ETC (Unchanged except logging) ---
+// --- GENERATION LOGIC, IMAGE HANDLING, ETC (unchanged from original full file) ---
+window.logoImageBase64 = "";
+window.propertyImagesBase64 = [];
 async function generate() {
   const type = document.getElementById("type").value;
   const status = document.getElementById("status").value;
@@ -310,7 +296,6 @@ async function generate() {
     return;
   }
   log("🧠 Generating listing for: " + type + ", " + status + ", " + location);
-
   const prompt = `Create a professional real estate listing for a property with the following details. 
 Start with an eye-catching title using emojis. Then write a stylish, appealing paragraph. 
 Finish with a bulleted list using emojis — but only include bullets for fields that have values (i.e., skip empty fields). Avoid repeating anything already covered in the paragraph.
@@ -333,7 +318,6 @@ Property Details:
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt })
   });
-
   const data = await res.json();
   const output = data.result || "Something went wrong.";
   document.getElementById("result").innerHTML = output;
@@ -342,7 +326,6 @@ Property Details:
   document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
   log("✅ Listing generated.");
 }
-
 function applyEnhancement() {
   const enhancement = document.getElementById("enhance").value.trim();
   if (!enhancement) return alert("Please enter an enhancement.");
@@ -381,7 +364,6 @@ function exportToWord() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToWord code
   alert("Word export would trigger here. (Integrate with your /export-word API)");
   log("⬇️ Exported to DOCX (mock).");
 }
@@ -390,7 +372,6 @@ function exportToPDF() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToPDF code
   alert("PDF export would trigger here. (Integrate with your PDF logic)");
   log("⬇️ Exported to PDF (mock).");
 }
@@ -415,7 +396,6 @@ function clearAll() {
   document.getElementById("output-container").style.display = 'none';
   log("🧹 Form cleared.");
 }
-// Logo & image preview
 document.getElementById("logoFile").addEventListener("change", function () {
   const preview = document.getElementById("logo-preview");
   preview.innerHTML = "";
@@ -434,7 +414,6 @@ document.getElementById("logoFile").addEventListener("change", function () {
     img.style.marginBottom = "8px";
     img.style.borderRadius = "4px";
     preview.appendChild(img);
-
     const deleteBtn = document.createElement('button');
     deleteBtn.textContent = '🗑️ Delete Logo';
     deleteBtn.onclick = function() {
@@ -469,17 +448,14 @@ document.getElementById("images").addEventListener("change", function () {
     reader.onload = function (e) {
       const base64 = e.target.result;
       window.propertyImagesBase64.push(base64);
-
       const img = new Image();
       img.src = e.target.result;
       img.style.maxHeight = "100px";
       img.style.marginRight = "10px";
       img.style.borderRadius = "6px";
-
       const wrapper = document.createElement('div');
       wrapper.style.display = 'inline-block';
       wrapper.style.position = 'relative';
-
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = '🗑️';
       deleteBtn.style.position = 'absolute';
@@ -491,7 +467,6 @@ document.getElementById("images").addEventListener("change", function () {
       deleteBtn.style.borderRadius = '50%';
       deleteBtn.style.cursor = 'pointer';
       deleteBtn.onclick = function() { wrapper.remove(); };
-
       wrapper.appendChild(img);
       wrapper.appendChild(deleteBtn);
       preview.appendChild(wrapper);

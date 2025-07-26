@@ -34,7 +34,6 @@
     <button onclick="showBuyPremium()" style="background:#c79a0b;color:white;">Buy Premium (Annual)</button>
     <button onclick="clearLicense()" style="background:#8e2424;">Clear License</button>
     <button onclick="showLicenseEntry()" style="background:#1976d2;">Enter License Key</button>
-    <!-- PATCH: Added Recheck License -->
     <button onclick="recheckLicense()" style="background:#8bc34a;">Recheck License</button>
   </div>
 
@@ -118,7 +117,6 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-// --- PATCH BEGIN: Modal helpers for feedback ---
 function showCheckingModal(msg="Checking...") {
   let modal = document.createElement('div');
   modal.id = "checkingModal";
@@ -141,18 +139,14 @@ function hideModal() {
   let modal = document.getElementById('checkingModal');
   if (modal) modal.remove();
 }
-// --- PATCH END ---
 
-// --- Stripe Success Email Capture (handles ?checkout=success&email=...) ---
+// Stripe Success Email Capture
 (function() {
   const params = new URLSearchParams(window.location.search);
   const email = params.get('email');
   const checkout = params.get('checkout');
   if (checkout === 'success' && email && email.includes('@')) {
     localStorage.setItem('userEmail', email);
-    // Optionally reload to unlock features immediately
-    // window.location.reload();
-    // Clean URL: remove &email=... for privacy but keep ?checkout=success
     window.history.replaceState({}, document.title, window.location.pathname + '?checkout=success');
   }
 })();
@@ -169,7 +163,7 @@ function log(msg) {
   console.log(msg);
 }
 
-// --- PATCH BEGIN: Universal License Detection Function ---
+// --- UNIVERSAL LICENSE DETECTION PATCH ---
 async function detectAndSyncLicense(showPromptIfFree=true) {
   let licenseKey = localStorage.getItem("licenseKey");
   let userEmail = localStorage.getItem("userEmail");
@@ -210,10 +204,20 @@ async function detectAndSyncLicense(showPromptIfFree=true) {
         updateFeatureAccess();
         log("✅ Loaded license by email. Tier: " + tier);
         return tier;
+      } else {
+        setTier("free");
+        updateFeatureAccess();
+        log("👤 No valid license/email found, set to free.");
+        if (showPromptIfFree) showEmailPrompt();
+        return "free";
       }
     } catch (e) {
       hideModal();
       log("❌ Error checking license by email: " + e.message);
+      setTier("free");
+      updateFeatureAccess();
+      if (showPromptIfFree) showEmailPrompt();
+      return "free";
     }
   }
   // 3. Default to free
@@ -223,7 +227,6 @@ async function detectAndSyncLicense(showPromptIfFree=true) {
   if (showPromptIfFree) showEmailPrompt();
   return "free";
 }
-// --- PATCH END ---
 
 // --- LICENSE & TIER MANAGEMENT ---
 function showEmailPrompt() {
@@ -240,7 +243,6 @@ function hideLicenseEntry() {
   document.getElementById('licenseModalBg').style.display = 'none';
 }
 
-// --- PATCH BEGIN: Replace Email Modal Continue Button Handler ---
 document.getElementById("continueBtn").onclick = async function () {
   const email = document.getElementById("emailInput").value.trim();
   if (!email.match(/^[^@]+@[^@]+\.[^@]+$/)) {
@@ -253,14 +255,12 @@ document.getElementById("continueBtn").onclick = async function () {
   hideEmailPrompt();
   detectAndSyncLicense(false);
 };
-// --- PATCH END ---
 
 function maskLicense(key) {
   if (!key || key.length < 4) return 'xxxx';
   return 'xxxx-xxxx-xxxx-' + key.slice(-4);
 }
 
-// --- PATCH BEGIN: Replace Manual License Entry (saveLicense) ---
 async function saveLicense() {
   const key = document.getElementById("licenseInput").value.trim();
   if (!key) return alert("❗ Please enter a license key.");
@@ -287,7 +287,6 @@ async function saveLicense() {
     alert("❌ Error validating license: " + e.message);
   }
 }
-// --- PATCH END ---
 
 async function getTierFromLicenseKey(key) {
   try {
@@ -322,7 +321,6 @@ function setTier(tier) {
   badge.innerText = (t.charAt(0).toUpperCase() + t.slice(1)) + " Tier";
 }
 
-// Tier-based UI/UX Control
 function updateFeatureAccess() {
   let t = window.userTier || "free";
   let showPro = (t === "pro" || t === "premium");
@@ -335,7 +333,7 @@ function updateFeatureAccess() {
   log("🎚️ Access updated for tier: " + t);
 }
 
-// Stripe Buttons (just open links)
+// Stripe Buttons
 function showBuyPro() {
   window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank");
 }
@@ -343,22 +341,17 @@ function showBuyPremium() {
   window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank");
 }
 
-// --- PATCH BEGIN: Replace window.onload logic ---
 window.onload = function () {
   detectAndSyncLicense();
 };
-// --- PATCH END ---
 
-// --- PATCH BEGIN: Add Recheck License Handler ---
 function recheckLicense() {
   detectAndSyncLicense(false);
   alert("🔄 License rechecked and access updated.");
 }
-// --- PATCH END ---
 
-// --- GENERATION LOGIC, IMAGE HANDLING, ETC (Unchanged, except add log calls where needed) ---
+// --- GENERATION LOGIC, IMAGE HANDLING, ETC ---
 async function generate() {
-  // ... (your original code, unchanged except add logging)
   const type = document.getElementById("type").value;
   const status = document.getElementById("status").value;
   const location = document.getElementById("location").value.trim();
@@ -438,7 +431,6 @@ function exportToWord() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToWord code
   alert("Word export would trigger here. (Integrate with your /export-word API)");
   log("⬇️ Exported to DOCX (mock).");
 }
@@ -447,7 +439,6 @@ function exportToPDF() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToPDF code
   alert("PDF export would trigger here. (Integrate with your PDF logic)");
   log("⬇️ Exported to PDF (mock).");
 }
@@ -472,7 +463,7 @@ function clearAll() {
   document.getElementById("output-container").style.display = 'none';
   log("🧹 Form cleared.");
 }
-// Logo & image preview (no change from your file)
+// Logo & image preview
 document.getElementById("logoFile").addEventListener("change", function () {
   const preview = document.getElementById("logo-preview");
   preview.innerHTML = "";

@@ -113,8 +113,6 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-// --- License/Email Patch Logic ---
-
 function showCheckingModal(msg="Checking...") {
   let modal = document.createElement('div');
   modal.id = "checkingModal";
@@ -278,13 +276,10 @@ function log(msg) {
   const logArea = document.getElementById("debugLog");
   if (!logArea) return;
   logArea.value += `${new Date().toISOString()} — ${msg}\n`;
-  logArea.scrollTop = logArea.scrollHeight;
+  logArea.scrollTop = logArea.value.length;
   if (logArea.value.length > 12000) logArea.value = logArea.value.slice(-9000);
   console.log(msg);
 }
-// --- The rest of your generate, export, and image code is unchanged ---
-
-// --- GENERATION LOGIC, IMAGE HANDLING, ETC (unchanged from original full file) ---
 window.logoImageBase64 = "";
 window.propertyImagesBase64 = [];
 async function generate() {
@@ -359,22 +354,62 @@ function exportToText() {
   triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
   log("⬇️ Exported to TXT.");
 }
+
+// ----- FULL DOCX and PDF EXPORT RESTORED BELOW -----
 function exportToWord() {
   if (window.userTier === "free") {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  alert("Word export would trigger here. (Integrate with your /export-word API)");
-  log("⬇️ Exported to DOCX (mock).");
+  const content = document.getElementById("result").textContent;
+  const logo = window.logoImageBase64 || "";
+  const images = window.propertyImagesBase64 || [];
+  fetch("/export-word", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, logo, images })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("DOCX export failed");
+    return res.blob();
+  })
+  .then(blob => {
+    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
+    log("⬇️ Exported to DOCX.");
+  })
+  .catch(e => {
+    alert("❌ DOCX export error: " + e.message);
+    log("❌ DOCX export error: " + e.message);
+  });
 }
 function exportToPDF() {
   if (window.userTier === "free") {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  alert("PDF export would trigger here. (Integrate with your PDF logic)");
-  log("⬇️ Exported to PDF (mock).");
+  const content = document.getElementById("result").textContent;
+  const logo = window.logoImageBase64 || "";
+  const images = window.propertyImagesBase64 || [];
+  fetch("/export-pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, logo, images })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("PDF export failed");
+    return res.blob();
+  })
+  .then(blob => {
+    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+    log("⬇️ Exported to PDF.");
+  })
+  .catch(e => {
+    alert("❌ PDF export error: " + e.message);
+    log("❌ PDF export error: " + e.message);
+  });
 }
+// ----------------------------------------------------
+
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -1,4 +1,5 @@
-// ✅ FINAL server.js for PromptAgentHQ — robust dual license/email detection & response
+// server.js - FULL Production File
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -19,70 +20,87 @@ app.use(express.urlencoded({ extended: true }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// --- NEW: Robust validate-license handles both key and email, always returns full info
-app.get('/validate-license', async (req, res) => {
-  const { licenseKey, email } = req.query;
+async function validateLicense(req, res, next) {
+  const email = req.query.email || req.body.email || req.headers['x-user-email'];
+  const licenseKey = req.query.licenseKey || req.body.licenseKey;
   let tier = 'free';
-  let status = 'inactive';
-  let foundLicenseKey = null;
-  let foundEmail = null;
+  let result = { tier: 'free', status: 'inactive' };
 
   try {
-    // 1. Prefer licenseKey (if present)
+    // --- License lookup by licenseKey (optional, only if you support it) ---
     if (licenseKey) {
       const { data } = await supabase
         .from('licenses')
-        .select('license_type, status, expires_at, license_key, email')
+        .select('license_type, expires_at, status, email')
         .eq('license_key', licenseKey)
         .order('created_at', { ascending: false })
         .limit(1);
+
       if (data && data[0]) {
         const now = new Date();
         const expiresAt = new Date(data[0].expires_at);
         if (data[0].status === 'active' && expiresAt > now) {
           tier = data[0].license_type || 'free';
-          status = data[0].status;
-          foundLicenseKey = data[0].license_key;
-          foundEmail = data[0].email;
+          result = {
+            tier,
+            status: data[0].status,
+            email: data[0].email,
+            licenseKey
+          };
         }
       }
     }
-    // 2. Else, try email (if present)
+    // --- Fallback: Lookup by email ---
     else if (email) {
       const { data } = await supabase
         .from('licenses')
-        .select('license_type, status, expires_at, license_key, email')
+        .select('license_type, expires_at, status, license_key, email')
         .eq('email', email)
         .order('created_at', { ascending: false })
         .limit(1);
+
       if (data && data[0]) {
         const now = new Date();
         const expiresAt = new Date(data[0].expires_at);
         if (data[0].status === 'active' && expiresAt > now) {
           tier = data[0].license_type || 'free';
-          status = data[0].status;
-          foundLicenseKey = data[0].license_key;
-          foundEmail = data[0].email;
+          result = {
+            tier,
+            status: data[0].status,
+            licenseKey: data[0].license_key,
+            email: data[0].email
+          };
         }
       }
     }
-    return res.json({ tier, status, licenseKey: foundLicenseKey, email: foundEmail });
   } catch (err) {
     console.warn("⚠️ License validation failed:", err.message);
-    return res.json({ tier: "free", status: "inactive" });
   }
+
+  req.userTier = tier;
+  req.licenseInfo = result;
+  next();
+}
+
+// --- Validate License endpoint (for FE AJAX) ---
+app.get('/validate-license', validateLicense, (req, res) => {
+  // For frontend, always return tier + status (+ key/email if found)
+  res.json(req.licenseInfo || { tier: req.userTier, status: 'inactive' });
 });
 
+// --- Health Check ---
 app.get('/health', (req, res) => {
   res.status(200).send('✅ Server is healthy');
 });
 
+// --- Reset License (dev tool only, not prod!) ---
 app.get('/reset-license', (req, res) => {
   res.setHeader('Clear-Site-Data', '"cache", "cookies", "storage", "executionContexts"');
   res.send('✅ License reset.');
 });
 
-app.post("/generate", async (req, res) => {
+// --- OpenAI Listing Generation ---
+app.post("/generate", validateLicense, async (req, res) => {
   const userPrompt = req.body.prompt;
   console.log("🧠 Prompt received:", userPrompt);
 
@@ -105,7 +123,8 @@ app.post("/generate", async (req, res) => {
   }
 });
 
-app.post("/export-word", checkTier('pro'), (req, res) => {
+// --- Export Word (Pro only) ---
+app.post("/export-word", validateLicense, checkTier('pro'), (req, res) => {
   const { content, logo, images } = req.body;
   if (!content) return res.status(400).send("No content provided");
 
@@ -147,6 +166,9 @@ app.post("/export-word", checkTier('pro'), (req, res) => {
   });
 });
 
+// --- Stripe Webhook (handled in stripeWebhook.js, not repeated here) ---
+
+// --- Stripe Update License endpoint (called by webhook) ---
 app.post('/stripe/update-license', async (req, res) => {
   const { email, plan, license_type, stripe_customer, stripe_product } = req.body;
 
@@ -193,6 +215,11 @@ app.post('/stripe/update-license', async (req, res) => {
     console.error("❌ License update/insert error:", err.message);
     res.status(500).json({ error: 'Failed to update license' });
   }
+});
+
+// --- Health route for Render ---
+app.get("/health", (req, res) => {
+  res.status(200).send("✅ OK - Render health check passed.");
 });
 
 app.get("/", (req, res) => {

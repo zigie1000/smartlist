@@ -34,6 +34,7 @@
     <button onclick="showBuyPremium()" style="background:#c79a0b;color:white;">Buy Premium (Annual)</button>
     <button onclick="clearLicense()" style="background:#8e2424;">Clear License</button>
     <button onclick="showLicenseEntry()" style="background:#1976d2;">Enter License Key</button>
+    <button onclick="recheckLicense()" style="background:#4CAF50;">Recheck License</button>
   </div>
 
   <!-- Email Modal -->
@@ -123,9 +124,6 @@
   const checkout = params.get('checkout');
   if (checkout === 'success' && email && email.includes('@')) {
     localStorage.setItem('userEmail', email);
-    // Optionally reload to unlock features immediately
-    // window.location.reload();
-    // Clean URL: remove &email=... for privacy but keep ?checkout=success
     window.history.replaceState({}, document.title, window.location.pathname + '?checkout=success');
   }
 })();
@@ -142,7 +140,34 @@ function log(msg) {
   console.log(msg);
 }
 
-// --- LICENSE & TIER MANAGEMENT ---
+// --- UNIFIED TIER FETCH/SETTER (all actions use this) ---
+async function fetchAndSetTier({ licenseKey = null, email = null } = {}) {
+  let url = '/validate-license?';
+  if (licenseKey) url += 'licenseKey=' + encodeURIComponent(licenseKey);
+  else if (email) url += 'email=' + encodeURIComponent(email);
+  else {
+    setTier('free'); updateFeatureAccess();
+    log('No licenseKey/email to check, set to Free');
+    return;
+  }
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    log("🔍 validate-license: " + JSON.stringify(data));
+    setTier(data.tier);
+    window.userTier = data.tier;
+    updateFeatureAccess();
+    if (data.tier === 'free' && licenseKey)
+      alert("❌ License not recognized or expired.");
+    if (data.tier === 'free' && email && window.location.search.includes('checkout=success'))
+      alert("❌ No active license found for this email. If you just bought, wait 1 min and try again.");
+  } catch (err) {
+    log("❌ validate-license ERROR: " + err.message);
+    setTier('free');
+    updateFeatureAccess();
+  }
+}
+
 function showEmailPrompt() {
   document.getElementById('modalBg').style.display = 'block';
 }
@@ -166,20 +191,8 @@ document.getElementById("continueBtn").onclick = async function () {
   localStorage.setItem("userEmail", email);
   document.getElementById("statusMsg").innerText = "🔍 Checking license...";
   log("📬 Email entered: " + email);
-  try {
-    const resp = await fetch(`/validate-license?email=${encodeURIComponent(email)}`);
-    const { tier } = await resp.json();
-    setTier(tier);
-    window.userTier = tier;
-    updateFeatureAccess();
-    log("✅ License tier set to: " + tier);
-    hideEmailPrompt();
-  } catch (err) {
-    log("❌ Supabase error: " + err.message);
-    setTier("free");
-    updateFeatureAccess();
-    hideEmailPrompt();
-  }
+  await fetchAndSetTier({ email });
+  hideEmailPrompt();
 };
 
 function maskLicense(key) {
@@ -191,36 +204,18 @@ function saveLicense() {
   if (!key) return alert("❗ Please enter a license key.");
   localStorage.setItem("licenseKey", key);
   log("🔑 License key saved locally: " + maskLicense(key));
-  getTierFromLicenseKey(key).then(tier => {
-    setTier(tier);
-    window.userTier = tier;
-    updateFeatureAccess();
-    alert("✅ License saved and applied: " + (tier||'free').toUpperCase());
+  fetchAndSetTier({ licenseKey: key }).then(() => {
     hideLicenseEntry();
   });
 }
-async function getTierFromLicenseKey(key) {
-  try {
-    const res = await fetch(`/validate-license?licenseKey=${encodeURIComponent(key)}`);
-    const { tier } = await res.json();
-    return tier || "free";
-  } catch (err) {
-    log("❌ License check error: " + err.message);
-    return "free";
-  }
-}
-
 function clearLicense() {
   if (!confirm("Are you sure you want to clear your license and email?")) return;
   localStorage.removeItem("licenseKey");
   localStorage.removeItem("userEmail");
-  window.userTier = "free";
-  setTier("free");
-  updateFeatureAccess();
+  fetchAndSetTier(); // fallback to Free
   alert("✅ License cleared. Back to free tier.");
   log("🔄 License cleared. Downgraded to free.");
 }
-
 function setTier(tier) {
   window.userTier = tier;
   const badge = document.getElementById("tierBadge");
@@ -231,8 +226,6 @@ function setTier(tier) {
   else badge.className = '';
   badge.innerText = (t.charAt(0).toUpperCase() + t.slice(1)) + " Tier";
 }
-
-// Tier-based UI/UX Control
 function updateFeatureAccess() {
   let t = window.userTier || "free";
   let showPro = (t === "pro" || t === "premium");
@@ -244,37 +237,36 @@ function updateFeatureAccess() {
   if(document.getElementById("clearBtn"))       document.getElementById("clearBtn").disabled       = false;
   log("🎚️ Access updated for tier: " + t);
 }
-
-// Stripe Buttons (just open links)
 function showBuyPro() {
   window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank");
 }
 function showBuyPremium() {
   window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank");
 }
+async function recheckLicense() {
+  let k = localStorage.getItem("licenseKey");
+  let e = localStorage.getItem("userEmail");
+  await fetchAndSetTier({ licenseKey: k, email: e });
+  alert("🔁 License checked against server.");
+}
 
 // --- INITIAL DETECTION LOGIC ---
 window.onload = async function () {
   let savedLicense = localStorage.getItem("licenseKey");
   let savedEmail = localStorage.getItem("userEmail");
-
-  if (savedLicense) {
-    let tier = await getTierFromLicenseKey(savedLicense);
-    setTier(tier);
-    updateFeatureAccess();
-    log("🔑 Loaded license from localStorage. Tier: " + tier);
-  } else if (savedEmail) {
-    showEmailPrompt();
-  } else {
-    setTier("free");
-    updateFeatureAccess();
-    log("👤 No license/email found, set to free.");
+  if (window.location.search.includes("checkout=success")) {
+    if (savedEmail) await fetchAndSetTier({ email: savedEmail });
+    else showEmailPrompt();
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
   }
+  if (savedLicense) await fetchAndSetTier({ licenseKey: savedLicense });
+  else if (savedEmail) await fetchAndSetTier({ email: savedEmail });
+  else { setTier('free'); updateFeatureAccess(); log('No license/email found, set to free.'); }
 };
 
-// --- GENERATION LOGIC, IMAGE HANDLING, ETC (Unchanged, except add log calls where needed) ---
+// --- GENERATION LOGIC, IMAGE HANDLING, ETC (Unchanged) ---
 async function generate() {
-  // ... (your original code, unchanged except add logging)
   const type = document.getElementById("type").value;
   const status = document.getElementById("status").value;
   const location = document.getElementById("location").value.trim();
@@ -354,7 +346,6 @@ function exportToWord() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToWord code
   alert("Word export would trigger here. (Integrate with your /export-word API)");
   log("⬇️ Exported to DOCX (mock).");
 }
@@ -363,7 +354,6 @@ function exportToPDF() {
     alert("❌ Export requires Pro or Premium tier.");
     return;
   }
-  // original exportToPDF code
   alert("PDF export would trigger here. (Integrate with your PDF logic)");
   log("⬇️ Exported to PDF (mock).");
 }
@@ -388,7 +378,6 @@ function clearAll() {
   document.getElementById("output-container").style.display = 'none';
   log("🧹 Form cleared.");
 }
-// Logo & image preview (no change from your file)
 document.getElementById("logoFile").addEventListener("change", function () {
   const preview = document.getElementById("logo-preview");
   preview.innerHTML = "";

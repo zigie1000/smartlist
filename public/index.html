@@ -451,7 +451,8 @@ function triggerDownload(blob, filename) {
   a.download = filename;
   a.style.display = 'none';
   a.rel = "noopener";
-  a.target = "_self";
+  // Open not in same page
+  //a.target = "_self";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

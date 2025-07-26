@@ -101,7 +101,7 @@
     <div id="export-buttons">
       <button id="copyBtn" onclick="copyToClipboard()">Copy</button>
       <button id="exportBtn" class="proOnly" onclick="exportToWord()" title="Upgrade to Pro to enable this feature">Export Word</button>
-      <button id="exportPdfBtn" class="proOnly" onclick="exportToPDF()" title="Upgrade to Pro to enable this feature">Export PDF</button>
+      <button id="exportPdfBtn" class="proOnly" onclick="exportToPDF_Instant()" title="Upgrade to Pro to enable this feature">Export PDF</button>
       <button id="exportTextBtn" class="proOnly" onclick="exportToText()" title="Upgrade to Pro to enable this feature">Export Text</button>
       <button onclick="clearAll()">Clear</button>
     </div>
@@ -113,6 +113,7 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
+// ---- LICENSE/TIER LOGIC ----
 function showCheckingModal(msg="Checking...") {
   let modal = document.createElement('div');
   modal.id = "checkingModal";
@@ -135,7 +136,6 @@ function hideModal() {
   let modal = document.getElementById('checkingModal');
   if (modal) modal.remove();
 }
-// ---- LICENSE/TIER LOGIC REMAINS AS IN CURRENT index.html ----
 async function detectAndSyncLicense(showPromptIfFree=true) {
   let licenseKey = localStorage.getItem("licenseKey");
   let userEmail = localStorage.getItem("userEmail");
@@ -357,6 +357,66 @@ function exportToText() {
   log("⬇️ Exported to TXT.");
 }
 
+// --- Client-side PDF Export (old jsPDF method, always works) ---
+function exportToPDF_Instant() {
+  // Uncomment next 3 lines if you want to block for free users
+  // if (window.userTier === "free") {
+  //   alert("❌ Export requires Pro or Premium tier.");
+  //   return;
+  // }
+  const { jsPDF } = window.jspdf;
+  const raw = document.getElementById("result").textContent;
+  // Remove accents/normalize if needed:
+  const stripped = raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, '').replace(/[^\x00-\x7F]/g, '');
+  const doc = new jsPDF();
+
+  let y = 20;
+  if (window.logoImageBase64) {
+    doc.addImage(window.logoImageBase64, 'PNG', 15, 10, 40, 20);
+    y = 35;
+  }
+  const lines = doc.splitTextToSize(stripped, 180);
+  doc.text(lines, 15, y);
+  y += lines.length * 10;
+
+  if (window.propertyImagesBase64 && window.propertyImagesBase64.length) {
+    for (const img of window.propertyImagesBase64) {
+      doc.addImage(img, 'JPEG', 15, y, 60, 45);
+      y += 50;
+    }
+  }
+  doc.save(getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+  log("⬇️ Exported to PDF (instant, client-side).");
+}
+
+// --- Optional: server-side PDF (not used by button, for reference) ---
+function exportToPDF() {
+  if (window.userTier === "free") {
+    alert("❌ Export requires Pro or Premium tier.");
+    return;
+  }
+  const content = document.getElementById("result").textContent;
+  const logo = window.logoImageBase64 || "";
+  const images = window.propertyImagesBase64 || [];
+  fetch("/export-pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, logo, images })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("PDF export failed");
+    return res.blob();
+  })
+  .then(blob => {
+    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+    log("⬇️ Exported to PDF (server).");
+  })
+  .catch(e => {
+    alert("❌ PDF export error: " + e.message);
+    log("❌ PDF export error: " + e.message);
+  });
+}
+
 function exportToWord() {
   if (window.userTier === "free") {
     alert("❌ Export requires Pro or Premium tier.");
@@ -381,32 +441,6 @@ function exportToWord() {
   .catch(e => {
     alert("❌ DOCX export error: " + e.message);
     log("❌ DOCX export error: " + e.message);
-  });
-}
-function exportToPDF() {
-  if (window.userTier === "free") {
-    alert("❌ Export requires Pro or Premium tier.");
-    return;
-  }
-  const content = document.getElementById("result").textContent;
-  const logo = window.logoImageBase64 || "";
-  const images = window.propertyImagesBase64 || [];
-  fetch("/export-pdf", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, logo, images })
-  })
-  .then(res => {
-    if (!res.ok) throw new Error("PDF export failed");
-    return res.blob();
-  })
-  .then(blob => {
-    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
-    log("⬇️ Exported to PDF.");
-  })
-  .catch(e => {
-    alert("❌ PDF export error: " + e.message);
-    log("❌ PDF export error: " + e.message);
   });
 }
 

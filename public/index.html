@@ -747,5 +747,64 @@ function getTimestampFilename(base, extension) {
   return `${base}_${timestamp}.${extension}`;
 }
 </script>
+<!-- ========= LEGAL FOOTER & MODALS ========= -->
+<footer id="legalFooter" style="margin-top:40px;padding:18px 0 6px 0; text-align:center; background:transparent; color:#888; font-size:13px;">
+  <span style="margin:0 12px; cursor:pointer; text-decoration:underline;" onclick="showLegal('privacy')">Privacy Policy</span>
+  <span style="margin:0 12px; cursor:pointer; text-decoration:underline;" onclick="showLegal('terms')">Terms of Use</span>
+  <span style="margin:0 12px; cursor:pointer; text-decoration:underline;" onclick="showLegal('compliance')">Compliance</span>
+  <span style="margin:0 12px; font-style:italic;">Patent Pending</span>
+</footer>
+
+<!-- Modal Popup -->
+<div id="legalModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(25,25,25,0.28); backdrop-filter: blur(1px);">
+  <div id="legalBox" style="background:#fff; max-width:580px; margin:6vh auto 0; border-radius:12px; box-shadow:0 8px 42px rgba(0,0,0,0.17); padding:32px 24px 26px; position:relative; color:#263238; font-size:15px; line-height:1.68;">
+    <button onclick="hideLegal()" style="position:absolute;top:14px;right:18px;background:#f5f5f5;color:#444;border:none;font-size:15px;padding:5px 14px;border-radius:8px;cursor:pointer;">Close</button>
+    <div id="legalContent"></div>
+  </div>
+</div>
+<script>
+  const legalTexts = {
+    privacy: `<h3 style="margin-top:0">Privacy Policy</h3>
+      <p>Your privacy is important. We comply with POPIA, GDPR, CCPA and all global data laws. Only essential info (email, license key) is stored to deliver features and is never sold or used for marketing.</p>
+      <ul>
+        <li>All data is encrypted in transit and at rest.</li>
+        <li>No personal data is shared with third parties except for payment/license verification (e.g., Stripe, Supabase).</li>
+        <li>You may request deletion of your account or data any time by emailing <a href="mailto:support@promptagenthq.com">support@promptagenthq.com</a>.</li>
+        <li>AI outputs are not permanently stored or used to train external models.</li>
+      </ul>
+      <p>For full details, <a href="mailto:support@promptagenthq.com">contact us</a>.</p>
+    `,
+    terms: `<h3 style="margin-top:0">Terms of Use</h3>
+      <ul>
+        <li>This service is provided "as is" and may be withdrawn at any time.</li>
+        <li>You must not misuse the service, attempt to reverse engineer it, or use it for unlawful activity.</li>
+        <li>Paid tiers are delivered on a best effort; refunds for non-delivery will be processed if confirmed.</li>
+        <li>AI outputs are for informational use only; we make no guarantee as to accuracy or fitness for any purpose.</li>
+        <li>By using this app, you consent to basic data collection (see Privacy Policy).</li>
+        <li>All IP, code, and content remain the property of PromptAgentHQ. System and Method for Real-Time Multimodal AI Content Generation and Iterative Enhancement – Patent Pending (2025/05246).</li>
+      </ul>
+      <p>If you disagree with these terms, do not use the app. For queries, email <a href="mailto:support@promptagenthq.com">support@promptagenthq.com</a>.</p>
+    `,
+    compliance: `<h3 style="margin-top:0">Compliance & Global Notices</h3>
+      <ul>
+        <li><b>POPIA/POPI (South Africa):</b> We respect your right to privacy and process all personal info lawfully and minimally.</li>
+        <li><b>GDPR (EU/UK):</b> Data subjects may request access, correction, or deletion of their data. No profiling or automated decisions.</li>
+        <li><b>CCPA (California):</b> California residents have the right to opt out of data sharing and request deletion.</li>
+        <li><b>AI Output Notice:</b> Listings are AI-generated and may contain errors or bias. Use at your own discretion.</li>
+        <li>For any privacy or compliance request, contact: <a href="mailto:support@promptagenthq.com">support@promptagenthq.com</a></li>
+      </ul>
+    `
+  };
+  function showLegal(which) {
+    document.getElementById('legalContent').innerHTML = legalTexts[which] || '';
+    document.getElementById('legalModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+  function hideLegal() {
+    document.getElementById('legalModal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+</script>
+<!-- ========= END LEGAL FOOTER & MODALS ========= -->  
 </body>
 </html>

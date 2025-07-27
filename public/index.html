@@ -175,7 +175,7 @@
 <body>
 <div class="container">
   <span id="tierBadge">Free Tier</span>
-  <h2>🏡 PromptAgentHQ – Real Estate Listing Generator</h2>
+  <h2>🏡 Smartlist – Real Estate Listing Generator</h2>
   <div style="margin-bottom:18px">
     <button onclick="showBuyPro()" style="background:#1976d2;color:white;">Buy Pro (Monthly) – $5</button>
 <button onclick="showBuyPremium()" style="background:#c79a0b;color:white;">Buy Premium (Annual) – $50</button>
@@ -555,7 +555,7 @@ function exportToText() {
   const text = document.getElementById("result").textContent;
   const cleaned = text.replace(/Logo:.*(\n)?/, '');
   const blob = new Blob([cleaned], { type: "application/octet-stream" });
-  triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "txt"));
+  triggerDownload(blob, getTimestampFilename("Smartlist_Listing", "txt"));
   log("⬇️ Exported to TXT.");
 }
 
@@ -587,7 +587,7 @@ function exportToPDF_Instant() {
       y += 50;
     }
   }
-  doc.save(getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+  doc.save(getTimestampFilename("Smartlist_Listing", "pdf"));
   log("⬇️ Exported to PDF (instant, client-side).");
 }
 
@@ -610,7 +610,7 @@ function exportToPDF() {
     return res.blob();
   })
   .then(blob => {
-    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "pdf"));
+    triggerDownload(blob, getTimestampFilename("Smartlist_Listing", "pdf"));
     log("⬇️ Exported to PDF (server).");
   })
   .catch(e => {
@@ -637,7 +637,7 @@ function exportToWord() {
     return res.blob();
   })
   .then(blob => {
-    triggerDownload(blob, getTimestampFilename("PromptAgentHQ_Listing", "docx"));
+    triggerDownload(blob, getTimestampFilename("Smartlist_Listing", "docx"));
     log("⬇️ Exported to DOCX.");
   })
   .catch(e => {
@@ -786,7 +786,7 @@ function getTimestampFilename(base, extension) {
         <li>Paid tiers are delivered on a best effort; refunds for non-delivery will be processed if confirmed.</li>
         <li>AI outputs are for informational use only; we make no guarantee as to accuracy or fitness for any purpose.</li>
         <li>By using this app, you consent to basic data collection (see Privacy Policy).</li>
-        <li>All IP, code, and content remain the property of PromptAgentHQ. System and Method for Real-Time Multimodal AI Content Generation and Iterative Enhancement – Patent Pending (2025/05246).</li>
+        <li>All IP, code, and content remain the property of Smartlist. System and Method for Real-Time Multimodal AI Content Generation and Iterative Enhancement – Patent Pending (2025/05246).</li>
       </ul>
       <p>If you disagree with these terms, do not use the app. For queries, email <a href="mailto:support@promptagenthq.com">support@promptagenthq.com</a>.</p>
     `,

@@ -274,6 +274,37 @@ app.get("/health", (req, res) => {
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+// --- Register Free User Email (only if not already present) ---
+app.post('/api/register-free-user', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
 
+  try {
+    // Check if already exists
+    const { data } = await supabase
+      .from('licenses')
+      .select('id')
+      .eq('email', email)
+      .limit(1);
+
+    if (data && data.length > 0) {
+      // Already exists
+      return res.status(200).json({ status: "exists" });
+    }
+
+    // Insert new free email
+    const { error: insertError } = await supabase
+      .from('licenses')
+      .insert([
+        { email, license_type: 'free', status: 'active', created_at: new Date().toISOString() }
+      ]);
+
+    if (insertError) throw insertError;
+    res.status(200).json({ status: "inserted" });
+  } catch (err) {
+    console.error("❌ Error inserting free email:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

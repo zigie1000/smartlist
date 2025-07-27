@@ -218,6 +218,54 @@ app.post('/stripe/update-license', async (req, res) => {
   }
 });
 
+// --- Prompt AI (Moves all prompt logic to server) ---
+app.post("/prompt-ai", validateLicense, async (req, res) => {
+  const {
+    type, status, location, bedrooms, bathrooms, ensuites, garages,
+    interior, lot, notes, agent, enhancement, original
+  } = req.body;
+
+  let prompt = "";
+  if (!enhancement) {
+    // Listing generation
+    prompt = `Create a professional real estate listing for a property with the following details.
+Start with an eye-catching title using emojis. Then write a stylish, appealing paragraph.
+Finish with a bulleted list using emojis — but only include bullets for fields that have values (i.e., skip empty fields). Avoid repeating anything already covered in the paragraph.
+
+Property Details:
+- Type: ${type}
+- Status: ${status}
+- Location: ${location}
+- Bedrooms: ${bedrooms}
+- Bathrooms: ${bathrooms}
+- Ensuites: ${ensuites}
+- Garages: ${garages}
+- Living Space: ${interior} m²
+- Lot Size: ${lot} m²
+- Additional Features: ${notes}
+- Agent: ${agent}`.trim();
+  } else {
+    // Enhancement
+    prompt = `Please improve the following real estate listing using this enhancement: "${enhancement}". Maintain the exact structure — keep the title, paragraph body, and bullet list in the same format. Do not restructure the layout:\n\n${original}`;
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a real estate listing generator." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 300
+    });
+
+    const output = response.choices[0].message.content.trim();
+    res.json({ result: output });
+  } catch (e) {
+    res.status(500).json({ result: "Error generating listing." });
+  }
+});
+
 // --- Health route for Render ---
 app.get("/health", (req, res) => {
   res.status(200).send("✅ OK - Render health check passed.");

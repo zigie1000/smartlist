@@ -467,27 +467,25 @@ async function generate() {
     return;
   }
   log("🧠 Generating listing for: " + type + ", " + status + ", " + location);
-  const prompt = `Create a professional real estate listing for a property with the following details. 
-Start with an eye-catching title using emojis. Then write a stylish, appealing paragraph. 
-Finish with a bulleted list using emojis — but only include bullets for fields that have values (i.e., skip empty fields). Avoid repeating anything already covered in the paragraph.
 
-Property Details:
-- Type: ${type}
-- Status: ${status}
-- Location: ${location}
-- Bedrooms: ${document.getElementById("bedrooms").value}
-- Bathrooms: ${document.getElementById("bathrooms").value}
-- Ensuites: ${document.getElementById("ensuites").value}
-- Garages: ${document.getElementById("garages").value}
-- Living Space: ${document.getElementById("interior").value} m²
-- Lot Size: ${document.getElementById("lot").value} m²
-- Additional Features: ${document.getElementById("notes").value.trim()}
-- Agent: ${document.getElementById("agent").value.trim()}`.trim();
+  const payload = {
+    type,
+    status,
+    location,
+    bedrooms: document.getElementById("bedrooms").value,
+    bathrooms: document.getElementById("bathrooms").value,
+    ensuites: document.getElementById("ensuites").value,
+    garages: document.getElementById("garages").value,
+    interior: document.getElementById("interior").value,
+    lot: document.getElementById("lot").value,
+    notes: document.getElementById("notes").value.trim(),
+    agent: document.getElementById("agent").value.trim()
+  };
 
-  const res = await fetch("/generate", {
+  const res = await fetch("/prompt-ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify(payload)
   });
   const data = await res.json();
   const output = data.result || "Something went wrong.";
@@ -497,16 +495,23 @@ Property Details:
   document.getElementById("output-container").scrollIntoView({ behavior: "smooth" });
   log("✅ Listing generated.");
 }
+
 function applyEnhancement() {
   const enhancement = document.getElementById("enhance").value.trim();
   if (!enhancement) return alert("Please enter an enhancement.");
   const original = document.getElementById("result").textContent;
-  const newPrompt = `Please improve the following real estate listing using this enhancement: "${enhancement}". Maintain the exact structure — keep the title, paragraph body, and bullet list in the same format. Do not restructure the layout:\n\n${original}`;
+
+  const payload = {
+    enhancement,
+    original
+  };
+
   log("📝 Applying enhancement: " + enhancement);
-  fetch("/generate", {
+
+  fetch("/prompt-ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: newPrompt })
+    body: JSON.stringify(payload)
   })
   .then(res => res.json())
   .then(data => {

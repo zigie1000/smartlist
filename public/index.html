@@ -376,7 +376,7 @@ document.getElementById("continueBtn").onclick = async function () {
   }
   localStorage.setItem("userEmail", email);
  // --- Record free user email in Supabase
-fetch("/update-free-license", {
+await fetch("/api/register-free-user", {   // ✅ correct endpoint, use await!
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ email })

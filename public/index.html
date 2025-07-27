@@ -375,6 +375,12 @@ document.getElementById("continueBtn").onclick = async function () {
     return;
   }
   localStorage.setItem("userEmail", email);
+ // --- Record free user email in Supabase
+fetch("/update-free-license", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email })
+}); 
   document.getElementById("statusMsg").innerText = "🔍 Checking license...";
   log("📬 Email entered: " + email);
   hideEmailPrompt();

@@ -317,6 +317,40 @@ app.post('/api/register-free-user', async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
+// --- Stripe Checkout Session Creation ---
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+app.post('/create-checkout-session', async (req, res) => {
+  const { email, plan } = req.body;
+
+  if (!email || !['pro_monthly', 'premium_annual'].includes(plan)) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+
+  const priceId = plan === 'pro_monthly'
+    ? process.env.PRICE_PRO_MONTHLY
+    : process.env.PRICE_PREMIUM_ANNUAL;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer_email: email,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: process.env.STRIPE_SUCCESS_URL,
+      cancel_url: process.env.STRIPE_CANCEL_URL,
+    });
+
+    return res.json({ url: session.url });
+  } catch (err) {
+    console.error("❌ Stripe session error:", err.message);
+    res.status(500).json({ error: 'Stripe error' });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

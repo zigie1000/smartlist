@@ -811,5 +811,27 @@ function getTimestampFilename(base, extension) {
   }
 </script>
 <!-- ========= END LEGAL FOOTER & MODALS ========= -->  
+<script>
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch('/config');
+      const config = await res.json();
+
+      // Replace buttons with .env-based Stripe URLs
+      const proBtn = document.getElementById('buyProBtn');
+      const premiumBtn = document.getElementById('buyPremiumBtn');
+
+      if (proBtn && config.PRO_URL) {
+        proBtn.onclick = () => window.location.href = config.PRO_URL;
+      }
+
+      if (premiumBtn && config.PREMIUM_URL) {
+        premiumBtn.onclick = () => window.location.href = config.PREMIUM_URL;
+      }
+    } catch (err) {
+      console.error('⚠️ Failed to load product URLs:', err);
+    }
+  });
+</script>  
 </body>
 </html>

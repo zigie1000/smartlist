@@ -462,7 +462,7 @@ function updateFeatureAccess() {
   let t = window.userTier || "free";
 
   // ✅ Additional Features input logic
-  const notes = document.getElementById("notes");
+  const notes = document.getElementById("additionalFeatures"); // ✅ FIXED ID
   if (notes) {
     if (t === "free") {
       notes.maxLength = 40;

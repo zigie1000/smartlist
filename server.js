@@ -13,6 +13,13 @@ const { supabase } = require('./licenseManager');
 const { checkTier } = require('./tierControl');
 
 const app = express();
+// --- PUBLIC CONFIG ENDPOINT ---
+app.get('/config', (req, res) => {
+  res.json({
+    STRIPE_SUCCESS_URL: process.env.STRIPE_SUCCESS_URL || '',
+    STRIPE_CANCEL_URL: process.env.STRIPE_CANCEL_URL || ''
+  });
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripeWebhook'));
 app.use(express.json());

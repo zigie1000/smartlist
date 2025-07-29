@@ -811,5 +811,21 @@ function getTimestampFilename(base, extension) {
   }
 </script>
 <!-- ========= END LEGAL FOOTER & MODALS ========= -->  
+<script>
+  fetch('/config')
+    .then(res => res.json())
+    .then(data => {
+      if (data.PRO_URL) {
+        const proLink = document.getElementById('product1');
+        if (proLink) proLink.href = data.PRO_URL;
+      }
+      if (data.PREMIUM_URL) {
+        const premiumLink = document.getElementById('product2');
+        if (premiumLink) premiumLink.href = data.PREMIUM_URL;
+      }
+    })
+    .catch(err => console.error('Failed to load product URLs:', err));
+</script>
+  
 </body>
 </html>

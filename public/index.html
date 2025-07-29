@@ -465,8 +465,31 @@ function updateFeatureAccess() {
   if(document.getElementById("copyBtn"))        document.getElementById("copyBtn").disabled        = false;
   log("🎚️ Access updated for tier: " + t);
 }
-function showBuyPro() { window.open("https://buy.stripe.com/test_6oU28r4s4fL8dergXV38401", "_blank"); }
-function showBuyPremium() { window.open("https://buy.stripe.com/test_5kQ8wP3o042qdercHF38400", "_blank"); }
+function showBuyPro() {
+  fetch('/config')
+    .then(res => res.json())
+    .then(data => {
+      if (data.PRO_URL) {
+        window.open(data.PRO_URL, "_blank");
+      } else {
+        alert("Pro purchase URL not found.");
+      }
+    })
+    .catch(() => alert("Failed to load Pro purchase URL."));
+}
+
+function showBuyPremium() {
+  fetch('/config')
+    .then(res => res.json())
+    .then(data => {
+      if (data.PREMIUM_URL) {
+        window.open(data.PREMIUM_URL, "_blank");
+      } else {
+        alert("Premium purchase URL not found.");
+      }
+    })
+    .catch(() => alert("Failed to load Premium purchase URL."));
+}
 window.onload = function () { detectAndSyncLicense(); };
 function recheckLicense() { detectAndSyncLicense(false); alert("🔄 License rechecked and access updated."); }
 function log(msg) {

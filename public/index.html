@@ -465,7 +465,7 @@ function updateFeatureAccess() {
   const notes = document.getElementById("additionalFeatures"); // ✅ FIXED ID
   if (notes) {
     if (t === "free") {
-      notes.maxLength = 40;
+      notes.setAttribute('maxlength', '40');
       notes.placeholder = "Max 40 characters in Free Tier";
     } else {
       notes.removeAttribute("maxLength");

@@ -18,6 +18,14 @@ app.use('/webhook', express.raw({ type: 'application/json' }), require('./stripe
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Endpoint to return product URLs from environment variables
+app.get('/config', (req, res) => {
+  res.json({
+    PRO_URL: process.env.PRO_URL || '',
+    PREMIUM_URL: process.env.PREMIUM_URL || ''
+  });
+});
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function validateLicense(req, res, next) {

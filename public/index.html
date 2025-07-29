@@ -460,13 +460,28 @@ function setTier(tier) {
 }
 function updateFeatureAccess() {
   let t = window.userTier || "free";
+
+  // ✅ Additional Features input logic
+  const notes = document.getElementById("notes");
+  if (notes) {
+    if (t === "free") {
+      notes.maxLength = 40;
+      notes.placeholder = "Max 40 characters in Free Tier";
+    } else {
+      notes.removeAttribute("maxLength");
+      notes.placeholder = "e.g. Ocean views, pool, garden, fireplace...";
+    }
+  }
+
+  // ✅ Unlock UI buttons based on tier
   let showPro = (t === "pro" || t === "premium");
-  if(document.getElementById("exportBtn"))      document.getElementById("exportBtn").disabled      = !showPro;
-  if(document.getElementById("exportPdfBtn"))   document.getElementById("exportPdfBtn").disabled   = !showPro;
-  if(document.getElementById("exportTextBtn"))  document.getElementById("exportTextBtn").disabled  = !showPro;
-  if(document.getElementById("enhanceBtn"))     document.getElementById("enhanceBtn").disabled     = !showPro;
-  if(document.getElementById("copyBtn"))        document.getElementById("copyBtn").disabled        = false;
-  log("🎚️ Access updated for tier: " + t);
+  if(document.getElementById("exportBtn")) document.getElementById("exportBtn").style.display = showPro ? "inline-block" : "none";
+  if(document.getElementById("exportPdfBtn")) document.getElementById("exportPdfBtn").style.display = showPro ? "inline-block" : "none";
+  if(document.getElementById("exportTextBtn")) document.getElementById("exportTextBtn").style.display = showPro ? "inline-block" : "none";
+  if(document.getElementById("enhanceBtn")) document.getElementById("enhanceBtn").style.display = showPro ? "inline-block" : "none";
+  if(document.getElementById("copyBtn")) document.getElementById("copyBtn").style.display = showPro ? "inline-block" : "none";
+
+  log("🆙 Access updated for tier: " + t);
 }
 function showBuyPro() {
   fetch('/config')

@@ -812,26 +812,36 @@ function getTimestampFilename(base, extension) {
 </script>
 <!-- ========= END LEGAL FOOTER & MODALS ========= -->  
 <script>
-  window.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('buyProBtn').onclick = () => startStripeCheckout('pro_monthly');
+  document.getElementById('buyPremiumBtn').onclick = () => startStripeCheckout('premium_annual');
+
+  async function startStripeCheckout(plan) {
+    const email = localStorage.getItem('email');
+    if (!email) {
+      alert("Please enter your email first to activate your license.");
+      return;
+    }
+
     try {
-      const res = await fetch('/config');
-      const config = await res.json();
+      const response = await fetch('/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, plan })
+      });
 
-      // Replace buttons with .env-based Stripe URLs
-      const proBtn = document.getElementById('buyProBtn');
-      const premiumBtn = document.getElementById('buyPremiumBtn');
+      const result = await response.json();
 
-      if (proBtn && config.PRO_URL) {
-        proBtn.onclick = () => window.location.href = config.PRO_URL;
-      }
-
-      if (premiumBtn && config.PREMIUM_URL) {
-        premiumBtn.onclick = () => window.location.href = config.PREMIUM_URL;
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        console.error(result);
+        alert("Checkout failed: " + (result.error || "Unknown error"));
       }
     } catch (err) {
-      console.error('⚠️ Failed to load product URLs:', err);
+      console.error("Checkout error:", err);
+      alert("Stripe checkout failed.");
     }
-  });
-</script>  
+  }
+</script>
 </body>
 </html>

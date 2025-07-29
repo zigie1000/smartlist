@@ -475,13 +475,13 @@ function updateFeatureAccess() {
 
   // ✅ Unlock UI buttons based on tier
   let showPro = (t === "pro" || t === "premium");
-  if(document.getElementById("exportBtn")) document.getElementById("exportBtn").style.display = showPro ? "inline-block" : "none";
-  if(document.getElementById("exportPdfBtn")) document.getElementById("exportPdfBtn").style.display = showPro ? "inline-block" : "none";
-  if(document.getElementById("exportTextBtn")) document.getElementById("exportTextBtn").style.display = showPro ? "inline-block" : "none";
-  if(document.getElementById("enhanceBtn")) document.getElementById("enhanceBtn").style.display = showPro ? "inline-block" : "none";
-  if(document.getElementById("copyBtn")) document.getElementById("copyBtn").style.display = showPro ? "inline-block" : "none";
+  if (document.getElementById("exportBtn")) document.getElementById("exportBtn").style.display = showPro ? "inline-block" : "none";
+  if (document.getElementById("exportPdfBtn")) document.getElementById("exportPdfBtn").style.display = showPro ? "inline-block" : "none";
+  if (document.getElementById("exportTextBtn")) document.getElementById("exportTextBtn").style.display = showPro ? "inline-block" : "none";
+  if (document.getElementById("enhanceBtn")) document.getElementById("enhanceBtn").style.display = showPro ? "inline-block" : "none";
+  if (document.getElementById("copyBtn")) document.getElementById("copyBtn").style.display = showPro ? "inline-block" : "none";
 
-  log("🆙 Access updated for tier: " + t);
+  log("✅ Access updated for tier: " + t);
 }
 function showBuyPro() {
   fetch('/config')
